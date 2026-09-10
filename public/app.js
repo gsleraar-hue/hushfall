@@ -893,6 +893,21 @@
     .then((v) => { if (v.version) $('#app-version').textContent = 'versie ' + v.version; })
     .catch(() => { $('#app-version').textContent = ''; });
 
+  // Bijwerken. De app haalt een nieuwe versie zelf op de achtergrond op en installeert die bij het
+  // afsluiten; de balk hieronder is er alleen voor wie niet wil wachten. Nooit iets onderbreken:
+  // je bent aan het luisteren.
+  if (window.nebulaDesktop?.onUpdate) {
+    window.nebulaDesktop.onUpdate(({ staat, versie }) => {
+      if (staat === 'gevonden') return toast(`Versie ${versie} wordt op de achtergrond opgehaald`);
+      if (staat !== 'klaar') return;
+      const balk = $('#update-bar');
+      $('#update-tekst').textContent = `Versie ${versie} staat klaar. Hij wordt geïnstalleerd zodra je Nebula afsluit.`;
+      balk.hidden = false;
+    });
+    $('#update-nu').addEventListener('click', () => window.nebulaDesktop.installUpdate());
+    $('#update-later').addEventListener('click', () => { $('#update-bar').hidden = true; });
+  }
+
   window.nebula = { engine, visuals, get library() { return library; } }; // voor debuggen
 
   // ---- Start ------------------------------------------------------------------------

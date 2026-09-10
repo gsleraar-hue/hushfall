@@ -1,7 +1,7 @@
 {
   "name": "nebula",
   "productName": "Nebula",
-  "version": "1.0.10",
+  "version": "1.0.11",
   "description": "Ambient geluiden en soundscapes om te focussen, ontspannen en slapen",
   "private": true,
   "type": "module",
@@ -14,8 +14,9 @@
     "icon": "node scripts/make-icon.js",
     "start": "electron .",
     "bump": "node scripts/bump-version.js",
-    "dist": "node scripts/bump-version.js && electron-builder --win",
-    "dist:keep": "electron-builder --win"
+    "dist": "node scripts/bump-version.js && electron-builder --win --publish never",
+    "dist:keep": "electron-builder --win --publish never",
+    "release": "node scripts/bump-version.js && electron-builder --win --publish always"
   },
   "build": {
     "appId": "nl.janwolter.nebula",
@@ -65,5 +66,8 @@
     "electron": "^44.2.0",
     "electron-builder": "^26.15.3",
     "lamejs": "^1.2.1"
+  },
+  "dependencies": {
+    "electron-updater": "^6.8.9"
   }
 }

@@ -17,6 +17,9 @@ contextBridge.exposeInMainWorld('nebulaDesktop', {
   resetFolder: () => ipcRenderer.invoke('library:resetFolder'),
   onLog: listen('library:log'),
   onProgress: listen('library:progress'),
+  // Bijwerken: de app meldt zelf wanneer er een nieuwere versie klaarstaat.
+  onUpdate: listen('update:staat'),
+  installUpdate: () => ipcRenderer.invoke('update:installeer'),
   // Sonos: spelers op het lokale netwerk laten meeluisteren
   sonos: {
     list: () => ipcRenderer.invoke('sonos:list'),

@@ -6,6 +6,7 @@ const path = require('node:path');
 const { pathToFileURL } = require('node:url');
 const fs = require('node:fs');
 const sonos = require('./sonos.cjs');
+const { autoUpdater } = require('electron-updater');
 
 let win = null;
 let serverInfo = null;
@@ -143,6 +144,28 @@ ipcMain.handle('sonos:info', () => ({ localIp: sonos.localAddress(), streamPort:
 ipcMain.handle('library:stop', () => { if (fetchController) fetchController.abort(); return true; });
 ipcMain.handle('library:openFolder', () => shell.openPath(libraryDir()));
 
+/**
+ * Bijwerken. De app kijkt kort na het starten of er een nieuwere versie op GitHub staat, haalt die
+ * op de achtergrond binnen en installeert hem pas als je Nebula afsluit. Zo hoef je nooit zelf te
+ * de-installeren en onderbreekt het bijwerken nooit waar je naar aan het luisteren bent.
+ * De gedownloade bibliotheek staat in de gebruikersmap en blijft dus staan.
+ */
+function startBijwerken() {
+  if (!app.isPackaged) return;                 // tijdens ontwikkelen is er niets om bij te werken
+  autoUpdater.autoDownload = true;
+  autoUpdater.autoInstallOnAppQuit = true;
+  const melden = (staat, extra = {}) => { if (win && !win.isDestroyed()) win.webContents.send('update:staat', { staat, ...extra }); };
+  autoUpdater.on('update-available', (i) => melden('gevonden', { versie: i?.version }));
+  autoUpdater.on('update-downloaded', (i) => melden('klaar', { versie: i?.version }));
+  autoUpdater.on('download-progress', (p) => melden('bezig', { procent: Math.round(p?.percent || 0) }));
+  // Geen foutmelding aan de gebruiker: zonder internet of zonder release is dit geen probleem.
+  autoUpdater.on('error', (e) => console.warn('bijwerken mislukt:', e?.message || e));
+  setTimeout(() => autoUpdater.checkForUpdates().catch(() => {}), 8000); // eerst rustig opstarten
+  setInterval(() => autoUpdater.checkForUpdates().catch(() => {}), 6 * 60 * 60 * 1000);
+}
+// Nu meteen herstarten en installeren, als de gebruiker daar in de app op klikt.
+ipcMain.handle('update:installeer', () => { autoUpdater.quitAndInstall(); });
+
 // Autoplay zonder gebruikersinteractie toestaan (voor herstel van de laatste sessie).
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
 
@@ -151,7 +174,7 @@ if (!gotLock) {
   app.quit();
 } else {
   app.on('second-instance', () => { if (win) { if (win.isMinimized()) win.restore(); win.focus(); } });
-  app.whenReady().then(createWindow);
+  app.whenReady().then(createWindow).then(startBijwerken);
   app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
   // Bij afsluiten de speakers stoppen, anders blijven ze een zender zoeken die er niet meer is.
   let afsluiten = false;

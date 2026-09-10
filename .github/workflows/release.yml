@@ -1,0 +1,26 @@
+# Bouwt Nebula en zet de installer als release op GitHub. De app in het veld kijkt daar zelf naar
+# en werkt zichzelf bij. Draait bij een tag (v1.0.11) of handmatig via de Actions-tab.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write # nodig om een release aan te maken en de bestanden te uploaden
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # Geen bump hier: het versienummer in package.json is leidend en staat al in de tag.
+      - run: npx electron-builder --win --publish always
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
