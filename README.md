@@ -89,7 +89,21 @@ onderaan **Instellingen** in de app.
 ```bash
 npm run bump minor     # 1.0.4 -> 1.1.0 (of: major, patch, of een nummer als 2.0.0)
 npm run dist:keep      # opnieuw bouwen zonder het nummer te verhogen, bijvoorbeeld na een mislukte build
+npm run release        # versienummer +1, bouwen én als release op GitHub zetten
 ```
+
+### Bijwerken
+
+De app werkt zichzelf bij. Acht seconden na het starten, en daarna elke zes uur, kijkt hij of er een nieuwere
+release op GitHub staat, haalt die op de achtergrond binnen en installeert hem zodra je Nebula afsluit. Je hoeft
+de vorige versie dus niet te de-installeren, en bijwerken onderbreekt nooit waar je naar aan het luisteren bent.
+Staat er een versie klaar, dan verschijnt bovenin een balk met **Nu herstarten** voor wie niet wil wachten. De
+gedownloade bibliotheek staat in de gebruikersmap en blijft bij een update gewoon staan.
+
+Publiceren kan handmatig met `npm run release` (vereist een `GH_TOKEN` in de omgeving), of door een tag te
+pushen: `.github/workflows/release.yml` bouwt dan op een GitHub-runner en hangt de installer aan de release.
+Eigenaar en repo leidt electron-builder af uit de git-remote, dus er staat geen naam hard in de configuratie.
+Builds met `npm run dist` publiceren nooit en werken zichzelf ook niet bij; die zijn om te testen.
 
 `npm run dist` maakt `dist/Nebula Setup 1.0.0.exe` (installer) en `dist/Nebula-portable.exe`. De 76 eigen geluiden
 zitten in de exe en werken direct. Opnames zitten er niet in (dat zouden gigabytes zijn); die haal je erbij via
