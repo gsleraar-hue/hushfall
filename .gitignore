@@ -1,0 +1,10 @@
+node_modules/
+dist/
+public/sounds/
+public/library.json
+.env
+*.log
+
+# Werkbestanden
+build.log
+*.tmp

@@ -1,0 +1,69 @@
+{
+  "name": "nebula",
+  "productName": "Nebula",
+  "version": "1.0.10",
+  "description": "Ambient geluiden en soundscapes om te focussen, ontspannen en slapen",
+  "private": true,
+  "type": "module",
+  "main": "electron/main.cjs",
+  "author": "Jan-Wolter",
+  "scripts": {
+    "dev": "node server.js",
+    "fetch": "node scripts/fetch-sounds.js",
+    "fetch:dry": "node scripts/fetch-sounds.js --dry",
+    "icon": "node scripts/make-icon.js",
+    "start": "electron .",
+    "bump": "node scripts/bump-version.js",
+    "dist": "node scripts/bump-version.js && electron-builder --win",
+    "dist:keep": "electron-builder --win"
+  },
+  "build": {
+    "appId": "nl.janwolter.nebula",
+    "productName": "Nebula",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "electron/**",
+      "server.js",
+      "scripts/fetch-sounds.js",
+      "public/**",
+      "!public/sounds/**",
+      "!public/library.json",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "perMachine": false,
+      "shortcutName": "Nebula",
+      "deleteAppDataOnUninstall": false
+    },
+    "portable": {
+      "artifactName": "Nebula-portable-${version}.exe"
+    }
+  },
+  "devDependencies": {
+    "electron": "^44.2.0",
+    "electron-builder": "^26.15.3",
+    "lamejs": "^1.2.1"
+  }
+}
