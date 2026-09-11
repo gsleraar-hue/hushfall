@@ -1304,6 +1304,178 @@
     return { stop: stopAll(nodes, sched, ctx) };
   }
 
+  /**
+   * Zachte verzadiging: het randje vuil waarmee een synth of een piano niet meer schoon klinkt. De
+   * curve is het dure deel en wordt per audiocontext en per mate hergebruikt; de knoop zelf is goedkoop.
+   */
+  const vormCache = new WeakMap();
+  function vervorming(ctx, mate = 0.5) {
+    let per = vormCache.get(ctx); if (!per) { per = new Map(); vormCache.set(ctx, per); }
+    const sleutel = mate.toFixed(2);
+    let curve = per.get(sleutel);
+    if (!curve) {
+      const n = 2048; curve = new Float32Array(n); const k = 1 + mate * 60;
+      for (let i = 0; i < n; i++) { const x = (i / (n - 1)) * 2 - 1; curve[i] = Math.tanh(k * x) / Math.tanh(k); }
+      per.set(sleutel, curve);
+    }
+    const ws = ctx.createWaveShaper(); ws.curve = curve; ws.oversample = '2x';
+    return ws;
+  }
+  /**
+   * Tape: een korte vertraging waarvan de tijd langzaam heen en weer kruipt, wat precies het
+   * zeuren van een bandrecorder geeft, plus het ruisplafond van de band zelf. Dat ruisje is geen
+   * slordigheid maar het kenmerk: zonder bandloop klinkt deze muziek steriel.
+   */
+  function tape(ctx, out, { wow = 0.0016, snelheid = 0.7, ruis = 0.004 }) {
+    const inp = gainNode(ctx, 1); const d = ctx.createDelay(0.2); d.delayTime.value = 0.02;
+    const lfo = ctx.createOscillator(); lfo.frequency.value = snelheid; const lg = gainNode(ctx, wow);
+    chain(lfo, lg); lg.connect(d.delayTime); lfo.start();
+    chain(inp, d, out);
+    const sis = loopNoise(ctx, 'pink'); chain(sis, filt(ctx, 'highpass', 1600, 0.6), gainNode(ctx, ruis), out);
+    return { in: inp, nodes: [lfo, sis] };
+  }
+  /**
+   * Donkere elektronische filmmuziek: strak, koud en vuil, met een dreunende sub eronder.
+   *
+   * Het hart is de sequencer, en die is bewust monofoon gebouwd zoals een echte analoge sequencer:
+   * één oscillator die nooit stopt, één filter, één versterker, en het patroon zit volledig in de
+   * automatisering. Dat is niet alleen goedkoop (vier audioknopen voor het hele stuk in plaats van
+   * vijf per noot bij zestienden), het klinkt ook juister — je hoort het glijden tussen de tonen en
+   * de filter die over minuten opent, precies waar deze muziek het van moet hebben.
+   *
+   * Stijlen: 'sequencer' (onverstoorbaar arpeggio dat heel traag van kleur verandert), 'koudepiano'
+   * (een simpel pianomotief, hard aangeslagen en net ontstemd, boven een lage drone) en
+   * 'machine' (metaal en ruis in een fabriekshal, zonder melodie).
+   */
+  function donkereScore(ctx, out, { stijl = 'sequencer', modus = 'eolisch', grondtoon = 40, bpm = 100, vuil = 0.5, sub = true }) {
+    const sched = new Sched(ctx); const nodes = [];
+    const tel = 60 / bpm;
+    const sc = (MODI[modus] || MODI.eolisch).toonladder;
+    const trap = (i) => { const o = Math.floor(i / sc.length); return sc[((i % sc.length) + sc.length) % sc.length] + o * 12; };
+    // Een resonante filter en een verzadiger leveren een veel hetere uitgang dan de andere generatoren.
+    // Zonder deze demping werd dit stuk door de compressor per laag platgedrukt, en dat hoor je pompen.
+    // Alles gaat hier eerst doorheen, zodat `level` in de catalogus gewoon rond de 1 kan blijven.
+    const uit = gainNode(ctx, 0.16); uit.connect(out);
+    const ruimte = reverb(ctx, uit, 'irLong', 0.3);
+    const band = tape(ctx, uit, { wow: 0.0014 + vuil * 0.002, snelheid: rnd(0.5, 0.9), ruis: 0.003 + vuil * 0.006 });
+    nodes.push(...band.nodes);
+    const vuilBus = vervorming(ctx, 0.25 + vuil * 0.5); vuilBus.connect(band.in);
+
+    // Sub: de dreun onder alles. Hij komt op de tel en zakt weer weg, zodat het ademt in plaats van bromt.
+    if (sub) {
+      const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.value = midi(grondtoon - 24);
+      const g = gainNode(ctx, 0); const lp = filt(ctx, 'lowpass', 90, 1.2);
+      chain(o, lp, g, uit); o.start(); nodes.push(o);
+      sched.every(() => tel * 4, (t) => {
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.linearRampToValueAtTime(0.11, t + 0.04);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + tel * rnd(2.2, 3.4));
+      });
+      wander(ctx, sched, o.frequency, midi(grondtoon - 24) * 0.99, midi(grondtoon - 24) * 1.01, 9, 6);
+    }
+
+    if (stijl === 'sequencer') {
+      // Twee oscillatoren die nooit stoppen, samen door één filter en één versterker: een analoge
+      // monosynth. Alles wat je hoort gebeuren is automatisering op die vier knopen.
+      const vca = gainNode(ctx, 0);
+      const vcf = filt(ctx, 'lowpass', 600, 9);           // hoge resonantie: daar zit het karakter
+      chain(vca, vcf, vervorming(ctx, 0.2 + vuil * 0.35), panNode(ctx, 0), vuilBus);
+      const osc = [0, 1].map((i) => {
+        const o = ctx.createOscillator(); o.type = i ? 'square' : 'sawtooth';
+        o.detune.value = i ? rnd(5, 11) : rnd(-11, -5);
+        chain(o, gainNode(ctx, i ? 0.35 : 0.6), vca); o.start(); nodes.push(o); return o;
+      });
+      // De filter kruipt over minuten open en weer dicht: dat is de hele ontwikkeling van het stuk.
+      // Niet verder dichtknijpen dan 420 Hz, want dan valt het minutenlang zo goed als weg — met een
+      // wijder bereik scheelde het gemeten een factor tien in volume tussen twee momenten.
+      wander(ctx, sched, vcf.frequency, 420, 2400, 22, 14);
+      wander(ctx, sched, vcf.Q, 5, 12, 17, 10);
+      let patroon = Array.from({ length: 8 }, () => pick([0, 0, 2, 3, 4, 5, 7]));
+      let i = 0;
+      sched.every(() => tel / 2, (t) => {                  // zestienden bij een halve tel per stap
+        const stap = patroon[i % patroon.length]; i++;
+        if (i % (patroon.length * 4) === 0) patroon[Math.floor(R() * patroon.length)] = pick([0, 2, 3, 5, 7, 9]); // één noot verschuift
+        const f = midi(grondtoon + 12 + trap(stap));
+        for (const o of osc) o.frequency.setTargetAtTime(f, t, 0.004); // net geen sprong: dat glijdt
+        const hard = (i % 4 === 1) ? 1 : rnd(0.45, 0.8);   // lichte nadruk op de tel
+        vca.gain.setValueAtTime(0.0001, t);
+        vca.gain.linearRampToValueAtTime(0.075 * hard, t + 0.006);
+        vca.gain.exponentialRampToValueAtTime(0.0001, t + tel * rnd(0.3, 0.48));
+      });
+      // Een enkele lage aanhoudende toon eronder, die de tonaliteit vasthoudt.
+      const pad = ctx.createOscillator(); pad.type = 'sawtooth'; pad.frequency.value = midi(grondtoon);
+      const padLp = filt(ctx, 'lowpass', 300, 1.4); const padG = gainNode(ctx, 0.02);
+      chain(pad, padLp, padG, ruimte); pad.start(); nodes.push(pad);
+      wander(ctx, sched, padG.gain, 0.008, 0.03, 13, 8);
+    }
+
+    if (stijl === 'koudepiano') {
+      // Piano met een harde aanslag en weinig naklank, dubbel gespeeld met een tweede die er net
+      // naast staat. Die kleine onzuiverheid tussen de twee is wat het koud en onbehaaglijk maakt.
+      const piano = (t, n, gain, pan, ontstem) => {
+        const f = midi(n) * ontstem;
+        const bus = panNode(ctx, pan); chain(bus, vuilBus);
+        for (const [ratio, amp, len] of [[1, 1, 1], [2, 0.5, 0.55], [3, 0.22, 0.3], [4.1, 0.1, 0.2], [5.9, 0.04, 0.12]]) {
+          const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.value = f * ratio;
+          const g = gainNode(ctx, 0); const dur = rnd(1.6, 2.6) * len;
+          g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(gain * amp, t + 0.004);
+          g.gain.exponentialRampToValueAtTime(0.0003, t + dur);
+          chain(o, g, bus); o.start(t); o.stop(t + dur + 0.05);
+        }
+        burst(ctx, bus, { t, dur: 0.012, color: 'white', type: 'bandpass', freq: rnd(1800, 4200), Q: 1.6, gain: gain * 0.5, attack: 0.0006 });
+      };
+      // Een kort motief dat eindeloos terugkomt en af en toe een noot verlegt.
+      let motief = [0, 4, 3, 4, 2, 4, 0, -1];
+      speelReeks(sched,
+        () => { if (R() < 0.25) motief[Math.floor(R() * motief.length)] = pick([-1, 0, 2, 3, 4, 5]); return motief.slice(); },
+        (t, stap) => {
+          const n = grondtoon + 24 + trap(stap);
+          piano(t, n, rnd(0.05, 0.075), -0.12, 1);
+          piano(t + rnd(0.004, 0.02), n, rnd(0.03, 0.05), 0.14, rnd(0.9965, 1.0035)); // de tweede, net ernaast
+          if (R() < 0.3) piano(t, n - 12, 0.035, 0, 1);
+          return tel * pick([1, 1, 1, 1.5, 2]);
+        },
+        () => tel * rnd(2, 5), 2);
+      // Lage strijkerslaag die er traag onder aanzwelt.
+      speelReeks(sched,
+        () => [0, 3, 2, 5],
+        (t, stap) => { const dur = rnd(14, 26); strijkerNoot(ctx, ruimte, { t, freq: midi(grondtoon + trap(stap)), dur, gain: 0.032, pan: rnd(-0.3, 0.3), spelers: 3, aanzet: rnd(5, 9), helder: 0.75 }); return dur * 0.8; },
+        () => rnd(6, 16), 4);
+    }
+
+    if (stijl === 'machine') {
+      // Een fabriekshal: geen melodie, alleen ruimte, metaal en een motor die nooit helemaal gelijk loopt.
+      const motor = loopNoise(ctx, 'brown'); const mLp = filt(ctx, 'lowpass', 170, 2.4); const mG = gainNode(ctx, 0.06);
+      chain(motor, mLp, mG, vuilBus); nodes.push(motor);
+      wander(ctx, sched, mLp.frequency, 110, 320, 7, 5);
+      wander(ctx, sched, mG.gain, 0.03, 0.09, 5, 3.5);
+      const zoem = ctx.createOscillator(); zoem.type = 'sawtooth'; zoem.frequency.value = midi(grondtoon - 12);
+      const zLp = filt(ctx, 'lowpass', 260, 3); const zG = gainNode(ctx, 0.03);
+      chain(zoem, zLp, zG, vuilBus); zoem.start(); nodes.push(zoem);
+      wander(ctx, sched, zoem.detune, -25, 25, 11, 7);
+      wander(ctx, sched, zLp.frequency, 180, 900, 13, 8);
+      // Metaal dat wordt aangeslagen, op een raster dat net niet klopt.
+      let slag = 0;
+      sched.every(() => tel * pick([1, 1, 1.5, 2, 2, 3]), (t) => {
+        slag++;
+        if (R() < 0.25) return;                            // gaten in het ritme zijn belangrijker dan de slagen
+        const f = rnd(140, 520), p = rnd(-0.75, 0.75), kracht = (slag % 4 === 1) ? rnd(0.7, 1) : rnd(0.2, 0.55);
+        const bus = panNode(ctx, p); chain(bus, ruimte);
+        for (const [ratio, amp, len] of [[1, 1, 1], [1.71, 0.55, 0.7], [2.43, 0.34, 0.5], [3.89, 0.16, 0.3]]) {
+          const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.value = f * ratio * rnd(0.99, 1.01);
+          const g = gainNode(ctx, 0); const dur = rnd(1.4, 4) * len;
+          g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.05 * kracht * amp, t + 0.003);
+          g.gain.exponentialRampToValueAtTime(0.0003, t + dur);
+          chain(o, g, bus); o.start(t); o.stop(t + dur + 0.05);
+        }
+        burst(ctx, bus, { t, dur: 0.03, color: 'white', type: 'highpass', freq: rnd(2500, 6000), Q: 0.8, gain: 0.05 * kracht, attack: 0.0006 });
+      });
+      // Stoom of perslucht die af en toe ontsnapt.
+      sched.every(() => rnd(9, 26), (t) => burst(ctx, ruimte, { t, dur: rnd(0.4, 1.6), color: 'white', type: 'bandpass', freq: rnd(1800, 4500), Q: rnd(1.5, 4), gain: rnd(0.03, 0.07), attack: rnd(0.03, 0.2), pan: rnd(-0.7, 0.7), freqEnd: rnd(700, 2200) }));
+    }
+    return { stop: stopAll(nodes, sched, ctx) };
+  }
+
   // ---- Middeleeuwse kerkmuziek ---------------------------------------------------------------------
   // Kerktoonsoorten: gregoriaans staat niet in majeur of mineur maar in een modus. De finalis is de
   // slottoon, de reciteertoon de noot waarop de tekst gezongen wordt.
@@ -1859,6 +2031,12 @@
     G('film-cellodoek', 'Cellodoek', 'film', 'Solocello die traag aanzwelt, met strijkgeruis en glijdende tonen', celloDoek, { modus: 'frygisch', grondtoon: 33 }, 1.6, 0),
     G('film-cellodiepte', 'Diepte', 'film', 'Twee cello’s dicht naast elkaar, zwevend boven een lage drone', celloDoek, { modus: 'eolisch', grondtoon: 31, stemmen: 2, stem: true }, 0.99, 0),
     G('film-fabriek', 'Verlaten fabriek', 'film', 'Cello in een grote betonnen ruimte, met verre machines en metaal', celloDoek, { modus: 'frygisch', grondtoon: 30, industrieel: true }, 1.02, 0),
+    G('film-drift', 'Drift', 'film', 'Onverstoorbaar arpeggio dat over minuten van kleur verandert, met een dreunende sub', donkereScore, { stijl: 'sequencer', modus: 'eolisch', grondtoon: 40, bpm: 100, vuil: 0.45 }, 0.45, 0),
+    G('film-puls', 'Puls', 'film', 'Sneller en killer, met een strakke resonante filter', donkereScore, { stijl: 'sequencer', modus: 'frygisch', grondtoon: 38, bpm: 126, vuil: 0.6 }, 0.4, 0),
+    G('film-onderstroom', 'Onderstroom', 'film', 'Traag en breed, met de sub als hartslag eronder', donkereScore, { stijl: 'sequencer', modus: 'dorisch', grondtoon: 36, bpm: 74, vuil: 0.35 }, 0.47, 0),
+    G('film-koudepiano', 'Koude piano', 'film', 'Een hard aangeslagen pianomotief, net ontstemd dubbel gespeeld, boven lage strijkers', donkereScore, { stijl: 'koudepiano', modus: 'eolisch', grondtoon: 40, bpm: 88, vuil: 0.4 }, 0.66, 0),
+    G('film-glasscherven', 'Glasscherven', 'film', 'Hetzelfde motief, hoger en fragieler, met meer bandruis', donkereScore, { stijl: 'koudepiano', modus: 'frygisch', grondtoon: 43, bpm: 72, vuil: 0.6, sub: false }, 0.61, 0),
+    G('film-machinehal', 'Machinehal', 'film', 'Geen melodie: metaal, perslucht en een motor die nooit gelijk loopt', donkereScore, { stijl: 'machine', modus: 'frygisch', grondtoon: 36, bpm: 92, vuil: 0.7 }, 0.47, 0),
     G('greg-dorisch', 'Gregoriaans gezang', 'gregoriaans', 'Mannenkoor in unisono, dorische modus, grote kerk', gregoriaans, { modus: 'dorisch', grondtoon: 45, zangers: 6 }, 6.62, 0),
     G('greg-completen', 'Completen', 'gregoriaans', 'Het laatste getijde: donker, frygisch en traag', gregoriaans, { modus: 'frygisch', grondtoon: 43, tempo: 0.8, zangers: 5, bourdon: true }, 1.05, 0),
     G('greg-vespers', 'Vespers', 'gregoriaans', 'Avondgezang in mixolydisch, met orgelpunt', gregoriaans, { modus: 'mixolydisch', grondtoon: 46, tempo: 0.95, zangers: 6, bourdon: true }, 1.6, 0),

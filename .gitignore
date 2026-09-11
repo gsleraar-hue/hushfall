@@ -8,3 +8,4 @@ public/library.json
 # Werkbestanden
 build.log
 *.tmp
+*.bak

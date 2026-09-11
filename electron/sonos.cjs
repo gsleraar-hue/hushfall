@@ -65,11 +65,18 @@ function discoverAddresses({ timeout = 2500 } = {}) {
     const msg = Buffer.from(['M-SEARCH * HTTP/1.1', `HOST: ${SSDP_ADDR}:${SSDP_PORT}`, 'MAN: "ssdp:discover"', 'MX: 1', 'ST: urn:schemas-upnp-org:device:ZonePlayer:1', '', ''].join('\r\n'));
     sock.on('message', (buf, rinfo) => { if (/ZonePlayer|Sonos/i.test(buf.toString())) found.add(rinfo.address); });
     sock.on('error', () => { try { sock.close(); } catch {} resolve([]); });
-    sock.bind(() => {
+    // Stuur de zoekvraag expliciet via het thuisnetwerk. Zonder dit kiest Windows zelf een
+    // adapter, namelijk die met de laagste metric, en bij een actieve VPN (Tailscale, WireGuard)
+    // is dat de tunnel - daar staan geen spelers, dus vindt de app niets meer.
+    const lokaal = localAddress();
+    const start = () => {
       try { sock.setBroadcast(true); } catch {}
+      try { sock.setMulticastInterface(lokaal); } catch {}
       sock.send(msg, SSDP_PORT, SSDP_ADDR);
       setTimeout(() => sock.send(msg, SSDP_PORT, SSDP_ADDR), 600); // tweede poging, UDP mag verdwijnen
-    });
+    };
+    if (lokaal === '127.0.0.1') sock.bind(start);
+    else sock.bind(0, lokaal, start);
     setTimeout(() => { try { sock.close(); } catch {} resolve([...found]); }, timeout);
   });
 }

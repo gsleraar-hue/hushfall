@@ -7,7 +7,7 @@ cinematisch, stad, muziek).
 
 De geluiden komen uit twee hoeken:
 
-1. **Nebula's eigen geluiden** (76 stuks, `public/synth.js`): live gemaakt met Web Audio, dus geen bestanden en
+1. **Nebula's eigen geluiden** (82 stuks, `public/synth.js`): live gemaakt met Web Audio, dus geen bestanden en
    geen herhaling. Deze zitten altijd in de app, ook direct na installatie.
    - **Natuur**: regen met losse resonerende druppels; haardvuur waarin elke knap een korte ruisexplosie is
      (een gestemde knap klinkt onherroepelijk als popcorn) met daaronder een fijn geknetter dat nooit
@@ -25,7 +25,7 @@ De geluiden komen uit twee hoeken:
    - **Kerst**: negen sfeerbeelden, van een vierstemmig koor en een kerkorgel tot een carillon, een arrenslee
      met hoefslag in de sneeuw, knerpende sneeuw onder je voeten, een kerstmarkt met draaiorgel en de speeldoos.
      De melodieën zijn kerstliederen uit het publieke domein.
-   - **Filmmuziek**: veertien atmosferische stukken. Zeven komen uit één motor met drie handschriften:
+   - **Filmmuziek**: twintig atmosferische stukken. Zeven komen uit één motor met drie handschriften:
      trage strijkers met een lage drone en heel langzame akkoordwisselingen; een postminimalistisch
      pianomotief dat blijft herhalen en waarin af en toe één noot verschuift; en brede analoge pads met
      een trage filterveeg, een arpeggio door de echo en een zingende lead. Onder alles ligt lichte bandruis.
@@ -36,6 +36,14 @@ De geluiden komen uit twee hoeken:
      instrument, hoorbaar strijkgeruis dat toeneemt naarmate de stok dichter bij de kam komt, glijdende
      tonen en soms twee cello's zo dicht naast elkaar dat je ze hoort zweven. In de industriële variant
      staat de cello in een grote betonnen ruimte, met verre machines en aangeslagen metaal.
+     Tot slot zes donker-elektronische stukken: strak, koud en vuil, met een dreunende sub eronder. Drie
+     daarvan draaien om een sequencer die bewust monofoon is gebouwd zoals een echte analoge: één
+     oscillator die nooit stopt, één filter, één versterker, en het hele patroon in de automatisering.
+     Je hoort het glijden tussen de tonen en een resonante filter die over minuten opent en weer dichtgaat.
+     Twee stukken zetten daar een hard aangeslagen pianomotief tegenover, dubbel gespeeld met een tweede
+     die er net naast staat — die onzuiverheid maakt het koud. En één stuk is een machinehal zonder
+     melodie: metaal op een raster dat net niet klopt, perslucht en een motor die nooit gelijk loopt.
+     Alles gaat door een bandloop met wow en ruis, want zonder die degradatie klinkt dit steriel.
    - **Middeleeuwse kerkmuziek**: zeven gezangen in kerktoonsoorten (dorisch, frygisch, lydisch, mixolydisch),
      met de opbouw van echt gregoriaans: een intonatie omhoog, de tekst op de reciteertoon en een cadens terug
      naar de finalis, met melismen en vrije ritmiek. Gregoriaans gezang, Completen, Vespers, Lauden, Organum
@@ -105,7 +113,7 @@ pushen: `.github/workflows/release.yml` bouwt dan op een GitHub-runner en hangt 
 Eigenaar en repo leidt electron-builder af uit de git-remote, dus er staat geen naam hard in de configuratie.
 Builds met `npm run dist` publiceren nooit en werken zichzelf ook niet bij; die zijn om te testen.
 
-`npm run dist` maakt `dist/Nebula Setup 1.0.0.exe` (installer) en `dist/Nebula-portable.exe`. De 76 eigen geluiden
+`npm run dist` maakt `dist/Nebula Setup 1.0.0.exe` (installer) en `dist/Nebula-portable.exe`. De 82 eigen geluiden
 zitten in de exe en werken direct. Opnames zitten er niet in (dat zouden gigabytes zijn); die haal je erbij via
 **Instellingen › Bibliotheek**:
 
@@ -155,7 +163,7 @@ De speaker krijgt via UPnP de opdracht die zender te spelen. Geen account, geen 
 
 | Bron | Wat | Licentie |
 | --- | --- | --- |
-| Nebula zelf (`public/synth.js`) | 76 eigen geluiden en muziekstukken, live gemaakt met Web Audio | onderdeel van dit project |
+| Nebula zelf (`public/synth.js`) | 82 eigen geluiden en muziekstukken, live gemaakt met Web Audio | onderdeel van dit project |
 | [BBC Sound Effects](https://sound-effects.bbcrewind.co.uk/) | 33.000+ opnames, waaronder duizenden sferen en natuuropnames | RemArc-licentie: persoonlijk, educatief en niet-commercieel gebruik |
 | [Internet Archive](https://archive.org/) | veldopnames (o.a. radio aporee) en ambient muziek van netlabels | Creative Commons, per opname vermeld |
 | [Great 78 Project](https://archive.org/details/georgeblood) | gerestaureerde 78-toerenplaten: jazz, swing en kerstmuziek uit de jaren 1920–1950 | historische opnamen, per plaat vermeld |
