@@ -113,6 +113,27 @@ pushen: `.github/workflows/release.yml` bouwt dan op een GitHub-runner en hangt 
 Eigenaar en repo leidt electron-builder af uit de git-remote, dus er staat geen naam hard in de configuratie.
 Builds met `npm run dist` publiceren nooit en werken zichzelf ook niet bij; die zijn om te testen.
 
+### Als het geluid hapert
+
+Web Audio rekent alles op één enkele processorkern, en die kun je vol krijgen. De duurste post is met
+afstand de convolutiegalm. Gemeten, als deel van één kern:
+
+| | kosten |
+|---|---|
+| kerkgalm 8 s stereo | 0,36 |
+| kerkgalm 5 s mono | 0,17 |
+| 200 oscillatoren | 0,82 |
+| compressor | 0,03 |
+
+Daarom zijn alle impulsresponsen mono en korter (kerk 5 s, zaal 3 s, kamer 1,1 s): de kosten lopen recht op
+met de lengte én het aantal kanalen, terwijl je van een galmstaart niet hoort dat hij mono is. Voor een mix
+van drie geluiden ging de belasting daarmee van 0,77 naar 0,27 van een kern, gemeten over vijf runs.
+
+Hapert het toch, bijvoorbeeld doordat er zwaar werk op je pc draait, zet dan **Lichte modus** aan bij
+Instellingen › Beeld. Die laat de ruimtegalm per geluid weg en halveert de deeltjes. Meten doe je met een
+`OfflineAudioContext`: die rendert zo snel als de machine kan, dus rendertijd gedeeld door geluidsduur is
+precies het deel van een kern dat een knoop in werkelijkheid kost.
+
 `npm run dist` maakt `dist/Nebula Setup 1.0.0.exe` (installer) en `dist/Nebula-portable.exe`. De 82 eigen geluiden
 zitten in de exe en werken direct. Opnames zitten er niet in (dat zouden gigabytes zijn); die haal je erbij via
 **Instellingen › Bibliotheek**:

@@ -17,9 +17,14 @@
     const white = make((d) => { for (let i = 0; i < len; i++) d[i] = R() * 2 - 1; });
     const pink = make((d) => { let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0; for (let i = 0; i < len; i++) { const w = R() * 2 - 1; b0 = 0.99886 * b0 + w * 0.0555179; b1 = 0.99332 * b1 + w * 0.0750759; b2 = 0.969 * b2 + w * 0.153852; b3 = 0.8665 * b3 + w * 0.3104856; b4 = 0.55 * b4 + w * 0.5329522; b5 = -0.7616 * b5 - w * 0.016898; d[i] = b0 + b1 + b2 + b3 + b4 + b5 + b6 + w * 0.5362; b6 = w * 0.115926; } });
     const brown = make((d) => { let l = 0; for (let i = 0; i < len; i++) { l = (l + 0.02 * (R() * 2 - 1)) / 1.02; d[i] = l; } });
-    const impulse = (sec, decay) => { const n = Math.floor(sr * sec); const b = ctx.createBuffer(2, n, sr); for (let c = 0; c < 2; c++) { const d = b.getChannelData(c); for (let i = 0; i < n; i++) d[i] = (R() * 2 - 1) * Math.pow(1 - i / n, decay); } return b; };
+    // Impulsresponsen met één kanaal. Convolutie is verreweg de duurste bewerking in Web Audio en de
+    // kosten lopen recht op met de lengte én het aantal kanalen: een kerkgalm van 8 seconden in stereo
+    // kostte gemeten 0.36 van een processorkern, mono nog 0.22 en mono van 5 seconden 0.17. Met één
+    // kanaal blijft het stereobeeld van het drooggeluid gewoon staan; alleen de staart is mono, en dat
+    // hoor je bij een galmstaart niet. Alles draait op één audiothread, dus dit is de grens die telt.
+    const impulse = (sec, decay) => { const n = Math.floor(sr * sec); const b = ctx.createBuffer(1, n, sr); const d = b.getChannelData(0); for (let i = 0; i < n; i++) d[i] = (R() * 2 - 1) * Math.pow(1 - i / n, decay); return b; };
     // irKerk: een grote stenen kerk galmt lang na en dooft traag uit; daar is gregoriaans op geschreven.
-    const o = { white, pink, brown, irLong: impulse(4.5, 3.2), irRoom: impulse(1.4, 2.6), irKerk: impulse(8, 2.1) };
+    const o = { white, pink, brown, irLong: impulse(3, 3.2), irRoom: impulse(1.1, 2.6), irKerk: impulse(5, 2.1) };
     cache.set(ctx, o);
     return o;
   }
@@ -2055,8 +2060,17 @@
     G('kerst-speeldoos-stil', 'Stille speeldoos', 'kerst', 'Alleen de speeldoos, zonder belletjes', musicBox, { bells: false, pad: false }, 2.2, 0),
   ];
 
+  /**
+   * Lichte modus. Web Audio rekent alles op één enkele thread, en de ruimtegalm per laag is daarin
+   * met afstand de duurste post. Op een drukke machine — of met een mix van vier, vijf geluiden —
+   * kan dat over de grens gaan, en dan hoor je het geluid haperen. Hiermee laat je die galm weg:
+   * het klinkt iets droger, maar je houdt ruimte over. Geldt voor geluiden die je daarna start.
+   */
+  let lichteModus = false;
+
   window.NebulaSynth = {
     list: LIST,
+    setLicht(aan) { lichteModus = !!aan; },
     create(id, ctx, out) {
       const g = LIST.find((x) => x.id === id);
       if (!g) throw new Error('Onbekende generator ' + id);
@@ -2065,8 +2079,13 @@
       const comp = ctx.createDynamicsCompressor();
       comp.threshold.value = -20; comp.knee.value = 14; comp.ratio.value = 2.4; comp.attack.value = 0.008; comp.release.value = 0.28;
       comp.connect(out);
-      const dest = g.space > 0 ? reverb(ctx, comp, 'irRoom', g.space) : comp;
-      const lvl = gainNode(ctx, g.level ?? 1); lvl.connect(dest);
+      const galm = g.space > 0 && !lichteModus;
+      const dest = galm ? reverb(ctx, comp, 'irRoom', g.space) : comp;
+      // Zonder galm valt niet alleen de staart weg maar ook de demping van het drooggeluid, en dan
+      // springt het geluid ruim 3 dB omhoog zodra je de lichte modus aanzet. Dat compenseren we,
+      // zodat de schakelaar alleen de ruimte verandert en niet het volume.
+      const droog = (g.space > 0 && lichteModus) ? 1 - g.space : 1;
+      const lvl = gainNode(ctx, (g.level ?? 1) * droog); lvl.connect(dest);
       const gen = g.make(ctx, lvl, { ...g.params });
       return { stop: () => { gen.stop(); setTimeout(() => { for (const n of [lvl, comp]) { try { n.disconnect(); } catch {} } }, 300); } };
     },

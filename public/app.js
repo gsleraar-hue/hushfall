@@ -12,7 +12,7 @@
   let activeMix = null;
 
   // ---- Instellingen (localStorage) -------------------------------------------
-  const defaults = { volumes: { master: 0.8, main: 1, fx: 1, noise: 0.5, radio: 0.8 }, anim: true, density: 1, resume: true, page: 'home', noise: { color: 'roze', tone: 6000, hp: 40, gain: 0.5 }, timerFade: 30, layers: [], mixerKind: 'alle' };
+  const defaults = { volumes: { master: 0.8, main: 1, fx: 1, noise: 0.5, radio: 0.8 }, anim: true, density: 1, licht: false, resume: true, page: 'home', noise: { color: 'roze', tone: 6000, hp: 40, gain: 0.5 }, timerFade: 30, layers: [], mixerKind: 'alle' };
   let settings = defaults;
   try { settings = { ...defaults, ...JSON.parse(localStorage.getItem('nebula') || localStorage.getItem('sfeer') || '{}') }; settings.volumes = { ...defaults.volumes, ...settings.volumes }; settings.noise = { ...defaults.noise, ...settings.noise }; } catch {}
   const save = () => {
@@ -22,7 +22,8 @@
   };
   engine.volumes = settings.volumes;
   Object.assign(engine.noise, settings.noise, { on: false });
-  visuals.setEnabled(settings.anim); visuals.setDensity(settings.density);
+  visuals.setEnabled(settings.anim); visuals.setDensity(settings.density * (settings.licht ? 0.5 : 1));
+  window.NebulaSynth.setLicht(settings.licht);
 
   // ---- Hulpfuncties ----------------------------------------------------------
   const kindInfo = (k) => D.kinds[k] || { colors: ['#1a1f2e', '#2a3350', '#3f4f80'], accent: '#9db0e0', particles: 'dust' };
@@ -616,9 +617,19 @@
     $('#btn-mute').classList.toggle('active', engine.muted); $('#im-mute').classList.toggle('active', engine.muted);
   }
   $('#set-anim').checked = settings.anim; $('#set-density').value = settings.density; $('#set-density-out').textContent = Math.round(settings.density * 100) + '%'; $('#set-resume').checked = settings.resume;
+  $('#set-licht').checked = settings.licht;
   $('#set-anim').addEventListener('change', (e) => { settings.anim = e.target.checked; visuals.setEnabled(settings.anim); save(); });
-  $('#set-density').addEventListener('input', (e) => { settings.density = Number(e.target.value); $('#set-density-out').textContent = Math.round(settings.density * 100) + '%'; visuals.setDensity(settings.density); save(); });
+  $('#set-density').addEventListener('input', (e) => { settings.density = Number(e.target.value); $('#set-density-out').textContent = Math.round(settings.density * 100) + '%'; pasDichtheidToe(); save(); });
   $('#set-resume').addEventListener('change', (e) => { settings.resume = e.target.checked; save(); });
+  $('#set-licht').addEventListener('change', (e) => {
+    settings.licht = e.target.checked;
+    window.NebulaSynth.setLicht(settings.licht);
+    pasDichtheidToe();
+    toast(settings.licht ? 'Lichte modus aan; galm vervalt bij geluiden die je hierna start' : 'Lichte modus uit');
+    save();
+  });
+  // In de lichte modus halveren we ook de deeltjes: het tekenen deelt de thread met de notenplanner.
+  function pasDichtheidToe() { visuals.setDensity(settings.density * (settings.licht ? 0.5 : 1)); }
 
   function renderLibraryInfo() {
     const own = library.sounds.filter((s) => s.synth).length;

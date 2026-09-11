@@ -1,7 +1,7 @@
 {
   "name": "nebula",
   "productName": "Nebula",
-  "version": "1.0.12",
+  "version": "1.0.13",
   "description": "Ambient geluiden en soundscapes om te focussen, ontspannen en slapen",
   "private": true,
   "type": "module",
