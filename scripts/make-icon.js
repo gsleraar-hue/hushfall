@@ -38,16 +38,25 @@ const BLOBS = [ // cx, cy, rx, ry, hoek, kleur, sterkte
   [0.5, 0.66, 0.33, 0.18, 0, [108, 180, 255], 0.7],
 ];
 const towards = (col, c, a) => [col[0] + (c[0] - col[0]) * a, col[1] + (c[1] - col[1]) * a, col[2] + (c[2] - col[2]) * a];
-function render(size) {
-  const px = Buffer.alloc(size * size * 4);
-  const R = size * 0.22; const scale = size / 256;
-  for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
-    const i = (y * size + x) * 4;
-    const dx = Math.max(R - x, 0, x - (size - 1 - R)), dy = Math.max(R - y, 0, y - (size - 1 - R));
-    const d = Math.sqrt(dx * dx + dy * dy) - R;
-    const alpha = Math.max(0, Math.min(1, 0.5 - d));
-    if (alpha <= 0) continue;
-    const u = x / size, v = y / size;
+/**
+ * Tekent het icoon. Standaard vierkant met afgeronde hoeken; geef je een aparte hoogte en `rond`
+ * op false, dan komt er een rechthoek zonder hoeken uit. Dat is wat de brede tegel van de Microsoft
+ * Store nodig heeft: die wordt al op een eigen ondergrond getekend en hoort het vlak te vullen.
+ */
+function render(size, hoogte = size, rond = true) {
+  const w = size, h = hoogte;
+  const px = Buffer.alloc(w * h * 4);
+  const R = Math.min(w, h) * 0.22; const scale = Math.min(w, h) / 256;
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const i = (y * w + x) * 4;
+    let alpha = 1;
+    if (rond) {
+      const dx = Math.max(R - x, 0, x - (w - 1 - R)), dy = Math.max(R - y, 0, y - (h - 1 - R));
+      const d = Math.sqrt(dx * dx + dy * dy) - R;
+      alpha = Math.max(0, Math.min(1, 0.5 - d));
+      if (alpha <= 0) continue;
+    }
+    const u = x / w, v = y / h;
     const rad = Math.hypot(u - 0.5, v - 0.5) * 1.4;
     let col = [28 - 12 * rad, 21 - 8 * rad, 38 - 18 * rad];
     for (const [cx, cy, rx, ry, ang, c, k] of BLOBS) {
@@ -56,7 +65,7 @@ function render(size) {
       col = towards(col, c, Math.exp(-((xr / rx) ** 2 + (yr / ry) ** 2) * 2.2) * k);
     }
     for (const [sx, sy, sr, so] of STARS) {
-      const dist = Math.hypot((u - sx) * size, (v - sy) * size) / scale;
+      const dist = Math.hypot((u - sx) * w, (v - sy) * h) / scale;
       if (dist < sr + 1) col = towards(col, [244, 235, 221], so * Math.max(0, Math.min(1, sr + 0.5 - dist)));
     }
     const bx = (u - 0.55) * 256, by = (v - 0.5) * 256; // kruisje bij de grote ster
@@ -79,4 +88,19 @@ sizes.forEach((s, i) => {
 });
 fs.writeFileSync(path.join(ROOT, 'build', 'icon.ico'), Buffer.concat([header, ...dir, ...pngs]));
 fs.copyFileSync(path.join(ROOT, 'build', 'icon.png'), path.join(ROOT, 'public', 'icon.png'));
-console.log('build/icon.png, build/icon.ico en public/icon.png gemaakt');
+
+// Tegels voor de Microsoft Store. electron-builder pakt deze bestanden uit build/appx/ op; laat je ze
+// weg, dan zet hij zijn eigen algemene plaatjes in het pakket en staat er straks een vreemd icoon in
+// je Store-vermelding. De brede tegel is de enige die niet vierkant is.
+const appx = path.join(ROOT, 'build', 'appx');
+fs.mkdirSync(appx, { recursive: true });
+const tegels = [
+  ['Square44x44Logo.png', 44, 44, true],
+  ['Square71x71Logo.png', 71, 71, false],
+  ['Square150x150Logo.png', 150, 150, false],
+  ['Square310x310Logo.png', 310, 310, false],
+  ['StoreLogo.png', 50, 50, true],
+  ['Wide310x150Logo.png', 310, 150, false],
+];
+for (const [naam, w, h, rond] of tegels) fs.writeFileSync(path.join(appx, naam), png(w, h, render(w, h, rond)));
+console.log('build/icon.png, build/icon.ico, public/icon.png en ' + tegels.length + ' Store-tegels in build/appx gemaakt');

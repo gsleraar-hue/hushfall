@@ -1,4 +1,4 @@
-# Bouwt Nebula en zet de installer als release op GitHub. De app in het veld kijkt daar zelf naar
+# Bouwt Thrum en zet de installer als release op GitHub. De app in het veld kijkt daar zelf naar
 # en werkt zichzelf bij. Draait bij een tag (v1.0.11) of handmatig via de Actions-tab.
 name: Release
 
@@ -24,3 +24,25 @@ jobs:
       - run: npx electron-builder --win --publish always
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Het MSIX-pakket voor de Microsoft Store. Bewust een aparte taak: dit pakket werkt zichzelf niet
+  # bij (dat doet de Store) en haalt geen geluiden op bij bronnen die commercieel gebruik verbieden.
+  # De runner van GitHub heeft de Windows SDK al staan, dus makeappx.exe is hier gewoon beschikbaar —
+  # op een gewone werkplek moet je die SDK eerst zelf installeren.
+  store:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: node scripts/make-icon.js
+      - run: npx electron-builder --win appx --publish never
+      # Het pakket wordt niet gepubliceerd maar als bestand bewaard: inleveren bij de Store doe je
+      # zelf via Partner Center, en daar hoort een handmatige controle bij.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: thrum-msix
+          path: dist/*.appx

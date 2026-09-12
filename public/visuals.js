@@ -306,5 +306,5 @@
   function mix(a, b, t) { return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t]; }
   function rgb(a) { return `rgb(${a[0] | 0},${a[1] | 0},${a[2] | 0})`; }
   function rgba(a, o) { return `rgba(${a[0] | 0},${a[1] | 0},${a[2] | 0},${o})`; }
-  window.NebulaVisuals = Visuals;
+  window.ThrumVisuals = Visuals;
 })();

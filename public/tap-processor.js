@@ -27,4 +27,4 @@ class TapProcessor extends AudioWorkletProcessor {
     return true;
   }
 }
-registerProcessor('nebula-tap', TapProcessor);
+registerProcessor('thrum-tap', TapProcessor);

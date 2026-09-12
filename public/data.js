@@ -1,7 +1,7 @@
 // Static data: the look of each kind, curated mixes, radio stations and noise colours.
 // The keys (regen, onweer, ...) stay Dutch: they are identifiers used in library.json and in the
 // user's saved settings, so renaming them would break existing installations. Only labels change.
-window.NEBULA_DATA = {
+window.THRUM_DATA = {
   // Per soort: drie kleuren voor de achtergrond (diep, midden, licht) plus een accentkleur waarmee
   // de hele interface meekleurt, en het deeltjeseffect. Elke soort heeft een eigen deeltje, want
   // acht soorten met hetzelfde stof zag je niet uit elkaar en bewoog nauwelijks.
@@ -29,7 +29,7 @@ window.NEBULA_DATA = {
   moodOrder: ['focus', 'ontspanning', 'slaap', 'natuur', 'koffie', 'feest', 'cinematisch', 'stad', 'muziek'],
 
   // Names per kind and mood. library.json overrides these labels; they live here so the app shows
-  // full names even without a downloaded library (that is, with only Nebula's own sounds).
+  // full names even without a downloaded library (that is, with only Thrum's own sounds).
   kindLabels: {
     regen: 'Rain', onweer: 'Thunder & storm', wind: 'Wind', water: 'Water & streams', zee: 'Sea & shore',
     vuur: 'Fire', vogels: 'Birds', bos: 'Forest & nature', nacht: 'Night & insects', dieren: 'Animals',

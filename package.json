@@ -1,8 +1,8 @@
 {
-  "name": "nebula",
-  "productName": "Nebula",
-  "version": "1.0.13",
-  "description": "Ambient geluiden en soundscapes om te focussen, ontspannen en slapen",
+  "name": "thrum",
+  "productName": "Thrum",
+  "version": "1.0.15",
+  "description": "Ambient sound and soundscapes to focus, unwind and sleep — most of it generated live by the app itself",
   "private": true,
   "type": "module",
   "main": "electron/main.cjs",
@@ -16,11 +16,12 @@
     "bump": "node scripts/bump-version.js",
     "dist": "node scripts/bump-version.js && electron-builder --win --publish never",
     "dist:keep": "electron-builder --win --publish never",
-    "release": "node scripts/bump-version.js && electron-builder --win --publish always"
+    "release": "node scripts/bump-version.js && electron-builder --win --publish always",
+    "dist:store": "node scripts/make-icon.js && electron-builder --win appx --publish never"
   },
   "build": {
-    "appId": "nl.janwolter.nebula",
-    "productName": "Nebula",
+    "appId": "nl.janwolter.thrum",
+    "productName": "Thrum",
     "directories": {
       "output": "dist",
       "buildResources": "build"
@@ -55,11 +56,23 @@
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "perMachine": false,
-      "shortcutName": "Nebula",
+      "shortcutName": "Thrum",
       "deleteAppDataOnUninstall": false
     },
     "portable": {
-      "artifactName": "Nebula-portable-${version}.exe"
+      "artifactName": "Thrum-portable-${version}.exe"
+    },
+    "appx": {
+      "identityName": "00000000-0000-0000-0000-000000000000",
+      "publisher": "CN=Jan-Wolter",
+      "publisherDisplayName": "Jan-Wolter",
+      "applicationId": "Thrum",
+      "displayName": "Thrum",
+      "backgroundColor": "#0b0f1a",
+      "showNameOnTiles": true,
+      "languages": [
+        "en-US"
+      ]
     }
   },
   "devDependencies": {

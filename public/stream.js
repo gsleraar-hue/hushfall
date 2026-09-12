@@ -1,4 +1,4 @@
-// Zet Nebula om in een radiozender voor het eigen netwerk: de gemengde audio wordt live naar MP3
+// Zet Thrum om in een radiozender voor het eigen netwerk: de gemengde audio wordt live naar MP3
 // omgezet en naar de ingebouwde server gestuurd, waar een Sonos hem ophaalt.
 (function () {
   class Stream {
@@ -18,7 +18,7 @@
       try {
         if (!ctx.audioWorklet) throw new Error('AudioWorklet niet beschikbaar');
         if (!this._workletLoaded) { await ctx.audioWorklet.addModule('tap-processor.js'); this._workletLoaded = true; }
-        this.tap = new AudioWorkletNode(ctx, 'nebula-tap', { numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [2], processorOptions: { blockSize: 4096 } });
+        this.tap = new AudioWorkletNode(ctx, 'thrum-tap', { numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [2], processorOptions: { blockSize: 4096 } });
         // Aftakken ná de timer (uitfaden werkt dus ook op de Sonos) en vóór het hoofdvolume en dempen,
         // zodat het volume van je pc de uitzending niet stiller maakt.
         this.engine.tapPoint.connect(this.tap);
@@ -57,5 +57,5 @@
       this.emit('state');
     }
   }
-  window.NebulaStream = Stream;
+  window.ThrumStream = Stream;
 })();

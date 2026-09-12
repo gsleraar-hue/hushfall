@@ -1,11 +1,11 @@
-// Nebula: UI, navigatie, bibliotheek, timer en opslag van instellingen.
+// Thrum: UI, navigatie, bibliotheek, timer en opslag van instellingen.
 (function () {
-  const D = window.NEBULA_DATA;
+  const D = window.THRUM_DATA;
   const $ = (s, el = document) => el.querySelector(s);
   const $$ = (s, el = document) => [...el.querySelectorAll(s)];
-  const desktop = window.nebulaDesktop && window.nebulaDesktop.isDesktop;
-  const engine = new window.NebulaEngine();
-  const visuals = new window.NebulaVisuals($('#bg'));
+  const desktop = window.thrumDesktop && window.thrumDesktop.isDesktop;
+  const engine = new window.ThrumEngine();
+  const visuals = new window.ThrumVisuals($('#bg'));
   let library = { sounds: [], kinds: {}, moods: {} };
   let byId = new Map();
   let currentMood = null; // sfeer van het laatst gestarte hoofdgeluid
@@ -14,16 +14,16 @@
   // ---- Instellingen (localStorage) -------------------------------------------
   const defaults = { volumes: { master: 0.8, main: 1, fx: 1, noise: 0.5, radio: 0.8 }, anim: true, density: 1, licht: false, resume: true, page: 'home', noise: { color: 'roze', tone: 6000, hp: 40, gain: 0.5 }, timerFade: 30, layers: [], mixerKind: 'alle' };
   let settings = defaults;
-  try { settings = { ...defaults, ...JSON.parse(localStorage.getItem('nebula') || localStorage.getItem('sfeer') || '{}') }; settings.volumes = { ...defaults.volumes, ...settings.volumes }; settings.noise = { ...defaults.noise, ...settings.noise }; } catch {}
+  try { settings = { ...defaults, ...JSON.parse(localStorage.getItem('thrum') || localStorage.getItem('nebula') || localStorage.getItem('sfeer') || '{}') }; settings.volumes = { ...defaults.volumes, ...settings.volumes }; settings.noise = { ...defaults.noise, ...settings.noise }; } catch {}
   const save = () => {
     settings.layers = [...engine.layers.values()].map((l) => ({ id: l.sound.id, gain: l.gainValue, origin: l.origin }));
     settings.volumes = engine.volumes; settings.noise = { color: engine.noise.color, tone: engine.noise.tone, hp: engine.noise.hp, gain: engine.noise.gain, on: engine.noise.on };
-    try { localStorage.setItem('nebula', JSON.stringify(settings)); } catch {}
+    try { localStorage.setItem('thrum', JSON.stringify(settings)); } catch {}
   };
   engine.volumes = settings.volumes;
   Object.assign(engine.noise, settings.noise, { on: false });
   visuals.setEnabled(settings.anim); visuals.setDensity(settings.density * (settings.licht ? 0.5 : 1));
-  window.NebulaSynth.setLicht(settings.licht);
+  window.ThrumSynth.setLicht(settings.licht);
 
   // ---- Hulpfuncties ----------------------------------------------------------
   const kindInfo = (k) => D.kinds[k] || { colors: ['#1a1f2e', '#2a3350', '#3f4f80'], accent: '#9db0e0', particles: 'dust' };
@@ -285,7 +285,7 @@
   const toast = (msg) => { const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.hidden = true; }, 2600); };
   const rnd = (arr) => arr[Math.floor(Math.random() * arr.length)];
   /**
-   * Kies per soort een geluid voor een mix. Nebula's eigen geluiden krijgen ruim voorrang: ze
+   * Kies per soort een geluid voor een mix. Thrum's eigen geluiden krijgen ruim voorrang: ze
    * herhalen nooit en mengen beter. Binnen de opnames hebben langere meer kans.
    */
   const pickKind = (kind, exclude = new Set()) => {
@@ -310,13 +310,13 @@
   };
 
   // ---- Bibliotheek laden ------------------------------------------------------
-  /** Nebula's eigen, live gemaakte geluiden. Zitten altijd in de app, ook zonder gedownloade bestanden. */
+  /** Thrum's eigen, live gemaakte geluiden. Zitten altijd in de app, ook zonder gedownloade bestanden. */
   function synthSounds() {
-    if (!window.NebulaSynth) return [];
-    return window.NebulaSynth.list.map((g) => ({
+    if (!window.ThrumSynth) return [];
+    return window.ThrumSynth.list.map((g) => ({
       id: `synth:${g.id}`, synth: g.id, title: g.title, kind: g.kind, moods: D.kindMoods[g.kind] || [],
-      source: 'synth', sourceName: 'Nebula', license: 'Nebula\u2019s own sound, generated live in the app',
-      author: 'Nebula', seconds: null, bytes: 0, file: null, tags: ['own', g.desc],
+      source: 'synth', sourceName: 'Thrum', license: 'Thrum\u2019s own sound, generated live in the app',
+      author: 'Thrum', seconds: null, bytes: 0, file: null, tags: ['own', g.desc],
     }));
   }
   async function loadLibrary() {
@@ -348,7 +348,7 @@
       (mix ? `<span class="dots">${(s.kinds || []).map((k) => `<i style="background:${kindInfo(k).colors[2]}"></i>`).join('')}</span>` : `<span class="badge">${esc(s.sourceName || s.source)}</span>`) +
       `<div class="label"><div class="t">${esc(s.title)}</div><div class="s">${mix ? esc(s.sub) : esc(kindLabel(s.kind)) + (s.synth ? ' · endless' : s.seconds ? ' · ' + fmtTime(s.seconds) : '')}</div></div><span class="eq"><i></i><i></i><i></i></span>`;
     if (s.synth) el.classList.add('own');
-    el.title = mix ? s.title : `${s.title}\n${s.synth ? (s.tags?.[1] || '') + ' · generated live by Nebula, never repeats' : (s.sourceName || '') + ' · ' + (s.license || '')}`;
+    el.title = mix ? s.title : `${s.title}\n${s.synth ? (s.tags?.[1] || '') + ' · generated live by Thrum, never repeats' : (s.sourceName || '') + ' · ' + (s.license || '')}`;
     return el;
   }
   function renderHome() {
@@ -372,11 +372,11 @@
       }
       sec.appendChild(row); root.appendChild(sec);
     }
-    // Nebula's eigen geluiden: altijd aanwezig, worden live gemaakt
+    // Thrum's eigen geluiden: altijd aanwezig, worden live gemaakt
     const own = library.sounds.filter((s) => s.synth);
     if (own.length) {
       const sec = document.createElement('section'); sec.className = 'row';
-      sec.innerHTML = `<div class="row-head"><h3>Made by Nebula <span class="count">${own.length} · generated live, never repeats</span></h3><button class="link">Show all</button></div>`;
+      sec.innerHTML = `<div class="row-head"><h3>Made by Thrum <span class="count">${own.length} · generated live, never repeats</span></h3><button class="link">Show all</button></div>`;
       sec.querySelector('.link').addEventListener('click', () => { settings.mixerKind = 'eigen'; renderMixer(); showPage('mixer'); });
       const row = document.createElement('div'); row.className = 'cards';
       for (const s of interleave(own)) { const card = soundCard(s); card.addEventListener('click', () => playMain(s)); row.appendChild(card); }
@@ -446,7 +446,7 @@
     const kinds = [...new Set(library.sounds.map((s) => s.kind))].sort((a, b) => kindLabel(a).localeCompare(kindLabel(b)));
     const filter = settings.mixerKind || 'alle';
     const mk = (id, label) => { const b = document.createElement('button'); b.className = 'chip' + (filter === id ? ' active' : ''); b.textContent = label; b.addEventListener('click', () => { settings.mixerKind = id; save(); renderMixer(); }); chips.appendChild(b); };
-    mk('alle', 'All'); mk('actief', 'Playing'); if (library.sounds.some((s) => s.synth)) mk('eigen', 'Made by Nebula');
+    mk('alle', 'All'); mk('actief', 'Playing'); if (library.sounds.some((s) => s.synth)) mk('eigen', 'Made by Thrum');
     if (filter.startsWith('mood:')) mk(filter, moodLabel(filter.slice(5))); // gekozen vanaf Sferen
     for (const k of kinds) mk(k, kindLabel(k));
     renderMixerGroups();
@@ -489,7 +489,7 @@
     const gain = layer ? layer.gainValue : 0.6;
     el.innerHTML = `<div class="art">${art(s.kind, seedOf(s.id))}</div>
       <div class="text"><div class="t" title="${esc(s.title)}">${esc(s.title)}</div>
-      <div class="s">${s.synth ? `<span class="own-tag" title="${esc(s.license)}">Nebula\u2019s own</span> · ${esc(s.tags?.[1] || 'endless')}` : `<a href="${esc(s.sourceUrl || '#')}" target="_blank" rel="noopener" title="${esc(s.license || '')}">${esc(s.sourceName || s.source)}</a>${s.seconds ? ' · ' + fmtTime(s.seconds) : ''}`}</div></div>
+      <div class="s">${s.synth ? `<span class="own-tag" title="${esc(s.license)}">Thrum\u2019s own</span> · ${esc(s.tags?.[1] || 'endless')}` : `<a href="${esc(s.sourceUrl || '#')}" target="_blank" rel="noopener" title="${esc(s.license || '')}">${esc(s.sourceName || s.source)}</a>${s.seconds ? ' · ' + fmtTime(s.seconds) : ''}`}</div></div>
       <div class="vol"><input type="range" min="0" max="1" step="0.01" value="${gain}" aria-label="Volume"><output>${Math.round(gain * 100)}%</output></div>
       <label class="switch small" title="Aan/uit"><input type="checkbox" ${layer ? 'checked' : ''}><span class="track"></span></label>`;
     const cb = el.querySelector('input[type=checkbox]'); const range = el.querySelector('input[type=range]'); const out = el.querySelector('output');
@@ -623,7 +623,7 @@
   $('#set-resume').addEventListener('change', (e) => { settings.resume = e.target.checked; save(); });
   $('#set-licht').addEventListener('change', (e) => {
     settings.licht = e.target.checked;
-    window.NebulaSynth.setLicht(settings.licht);
+    window.ThrumSynth.setLicht(settings.licht);
     pasDichtheidToe();
     toast(settings.licht ? 'Light mode on; reverb is dropped for sounds you start from now on' : 'Light mode off');
     save();
@@ -637,7 +637,7 @@
     const mb = files.reduce((a, s) => a + (s.bytes || 0), 0) / 1048576;
     const kinds = new Map(); for (const s of library.sounds) kinds.set(s.kind, (kinds.get(s.kind) || 0) + 1);
     const size = mb >= 1024 ? (mb / 1024).toFixed(1) + ' GB' : Math.round(mb) + ' MB';
-    $('#lib-summary').innerHTML = `<b>${own}</b> sounds made by Nebula itself, always available and without any files.` +
+    $('#lib-summary').innerHTML = `<b>${own}</b> sounds made by Thrum itself, always available and without any files.` +
       (files.length ? ` Plus <b>${files.length}</b> recordings from free sources (${size})${library.generated ? ', updated ' + new Date(library.generated).toLocaleString('en-GB') : ''}.` : ' No recordings downloaded yet.') +
       `<br>${kinds.size} kinds: ${[...kinds].sort((a, b) => b[1] - a[1]).map(([k, c]) => `${esc(kindLabel(k))} ${c}`).join(' · ')}`;
     const actions = $('#lib-actions'); actions.innerHTML = '';
@@ -647,18 +647,18 @@
         <button class="btn ghost" id="lib-choose">Use an existing library folder…</button><button class="btn ghost" id="lib-default" hidden>Back to the default folder</button>`;
       $('#lib-fetch-all').addEventListener('click', () => runFetch('all'));
       $('#lib-fetch-quick').addEventListener('click', () => runFetch('quick'));
-      $('#lib-stop').addEventListener('click', () => window.nebulaDesktop.stopFetch());
-      $('#lib-open').addEventListener('click', () => window.nebulaDesktop.openFolder());
+      $('#lib-stop').addEventListener('click', () => window.thrumDesktop.stopFetch());
+      $('#lib-open').addEventListener('click', () => window.thrumDesktop.openFolder());
       $('#lib-reload').addEventListener('click', () => loadLibrary().then(() => toast('Library reloaded')));
       $('#lib-choose').addEventListener('click', async () => {
-        const r = await window.nebulaDesktop.chooseFolder();
+        const r = await window.thrumDesktop.chooseFolder();
         if (r?.error) return toast(r.error);
         if (r?.canceled) return;
         await loadLibrary();
         toast(r.hasLib ? `Library loaded from ${r.dir}` : `Folder chosen: ${r.dir} (still empty, fetch some sounds)`);
       });
-      $('#lib-default').addEventListener('click', async () => { await window.nebulaDesktop.resetFolder(); await loadLibrary(); toast('Default folder restored'); });
-      window.nebulaDesktop.info().then((i) => { $('#lib-dir').textContent = `Folder: ${i.dir}`; $('#lib-default').hidden = !!i.isDefault; }).catch(() => {});
+      $('#lib-default').addEventListener('click', async () => { await window.thrumDesktop.resetFolder(); await loadLibrary(); toast('Default folder restored'); });
+      window.thrumDesktop.info().then((i) => { $('#lib-dir').textContent = `Folder: ${i.dir}`; $('#lib-default').hidden = !!i.isDefault; }).catch(() => {});
     } else {
       actions.innerHTML = `<p class="muted small">To fetch sounds, run <code>npm run fetch</code> in the project folder (quick selection) or <code>npm run fetch -- --all</code> (everything, up to 8 GB by default). Then reload the page.</p><button class="btn ghost" id="lib-reload">Reload library</button>`;
       $('#lib-reload').addEventListener('click', () => loadLibrary().then(() => toast('Library reloaded')));
@@ -667,7 +667,7 @@
     const src = new Map();
     for (const s of library.sounds) { const k = s.sourceName || s.source; if (!src.has(k)) src.set(k, { n: 0, lic: new Set() }); const e = src.get(k); e.n++; if (s.license) e.lic.add(s.license); }
     const sources = [
-      ['Nebula', null, 'Own sounds and music, generated live in the app'],
+      ['Thrum', null, 'Own sounds and music, generated live in the app'],
       ['BBC Sound Effects', 'https://sound-effects.bbcrewind.co.uk/', 'RemArc licence: personal, educational and non-commercial use'],
       ['Internet Archive', 'https://archive.org/', 'Creative Commons (stated per recording)'],
       ['Internet Archive (netlabels)', 'https://archive.org/details/netlabels', 'Creative Commons (stated per album)'],
@@ -685,8 +685,8 @@
     fetching = true;
     $('#lib-fetch-all').disabled = $('#lib-fetch-quick').disabled = true; $('#lib-stop').disabled = false;
     const log = $('#lib-log'); log.hidden = false; log.textContent = ''; const prog = $('#lib-progress'); prog.hidden = false;
-    const unLog = window.nebulaDesktop.onLog((line) => { log.textContent += line + '\n'; if (log.textContent.length > 60000) log.textContent = log.textContent.slice(-40000); log.scrollTop = log.scrollHeight; });
-    const unProg = window.nebulaDesktop.onProgress((p) => {
+    const unLog = window.thrumDesktop.onLog((line) => { log.textContent += line + '\n'; if (log.textContent.length > 60000) log.textContent = log.textContent.slice(-40000); log.scrollTop = log.scrollHeight; });
+    const unProg = window.thrumDesktop.onProgress((p) => {
       const pct = p.total ? Math.round(p.done / p.total * 100) : 0;
       prog.querySelector('.bar').style.width = pct + '%';
       prog.querySelector('.label').textContent = p.phase === 'zoeken' ? `Searching sources\u2026 ${p.sourcesDone || 0}/${p.sourcesTotal || '?'} sources, ${p.found || 0} candidates` : p.phase === 'klaar' ? `Done: ${p.count} sounds` : `${p.done}/${p.total} · ${p.count} sounds · ${(p.bytes / 1048576 / 1024).toFixed(2)} GB`;
@@ -694,7 +694,7 @@
       if (p.added && p.added % 20 === 0) loadLibrary();
     });
     try {
-      const r = await window.nebulaDesktop.fetchLibrary(mode);
+      const r = await window.thrumDesktop.fetchLibrary(mode);
       toast(r?.error ? `Fetch stopped: ${r.error}` : `Done: ${r.added} sounds added`);
     } catch (e) { toast('Fetch failed: ' + e.message); }
     unLog(); unProg(); fetching = false;
@@ -722,7 +722,7 @@
     $('#immersive-title').textContent = title; $('#immersive-sub').textContent = sub;
     updatePlayingMarks(); syncVolumeUI();
     if ('mediaSession' in navigator) {
-      try { navigator.mediaSession.metadata = new MediaMetadata({ title, artist: sub, album: 'Nebula' }); navigator.mediaSession.playbackState = engine.playing ? 'playing' : 'paused'; } catch {}
+      try { navigator.mediaSession.metadata = new MediaMetadata({ title, artist: sub, album: 'Thrum' }); navigator.mediaSession.playbackState = engine.playing ? 'playing' : 'paused'; } catch {}
     }
   }
   function updatePlayingMarks() {
@@ -818,20 +818,20 @@
   }
 
   // ---- Sonos --------------------------------------------------------------------------
-  // Nebula wordt een radiozender op je netwerk; de speakers halen de audio zelf op.
-  const stream = new window.NebulaStream(engine);
+  // Thrum wordt een radiozender op je netwerk; de speakers halen de audio zelf op.
+  const stream = new window.ThrumStream(engine);
   const sonos = { groups: [], playing: new Set(), busy: false, error: null, loaded: false };
   const sonosBtn = $('#btn-sonos'), sonosPop = $('#sonos-pop');
-  if (desktop && window.nebulaDesktop.sonos) sonosBtn.hidden = false;
+  if (desktop && window.thrumDesktop.sonos) sonosBtn.hidden = false;
 
   async function loadSonos(force) {
     if (sonos.busy) return;
     sonos.busy = true; renderSonos();
-    const r = await window.nebulaDesktop.sonos.list();
+    const r = await window.thrumDesktop.sonos.list();
     sonos.groups = r.groups || []; sonos.error = r.error || null; sonos.loaded = true; sonos.busy = false;
     // Van elke groep opvragen of hij onze zender al speelt (bijvoorbeeld na herstart van de app).
     await Promise.all(sonos.groups.map(async (g) => {
-      const s = await window.nebulaDesktop.sonos.status(g.host);
+      const s = await window.thrumDesktop.sonos.status(g.host);
       g.volume = s.volume ?? 30;
       if (s.ours && s.state === 'PLAYING') sonos.playing.add(g.host); else sonos.playing.delete(g.host);
     }));
@@ -847,7 +847,7 @@
     const rooms = sonos.groups.map((g) => {
       const on = sonos.playing.has(g.host);
       return `<div class="sonos-room${on ? ' on' : ''}" data-host="${esc(g.host)}">
-        <div><div class="n">${esc(g.name)}</div><div class="s">${esc(g.model || 'Sonos')}${on ? ' · playing Nebula' : ''}</div></div>
+        <div><div class="n">${esc(g.name)}</div><div class="s">${esc(g.model || 'Sonos')}${on ? ' · playing Thrum' : ''}</div></div>
         <label class="switch small"><input type="checkbox" ${on ? 'checked' : ''}><span class="track"></span></label>
         ${on ? `<div class="vol"><input type="range" min="0" max="100" step="1" value="${g.volume ?? 30}" aria-label="Volume ${esc(g.name)}"><output>${g.volume ?? 30}</output></div>` : ''}
       </div>`;
@@ -861,26 +861,26 @@
       const host = el.dataset.host;
       el.querySelector('input[type=checkbox]').addEventListener('change', (e) => toggleSonos(host, e.target.checked));
       const vol = el.querySelector('input[type=range]');
-      if (vol) vol.addEventListener('input', () => { vol.nextElementSibling.textContent = vol.value; const g = sonos.groups.find((x) => x.host === host); if (g) g.volume = Number(vol.value); window.nebulaDesktop.sonos.volume(host, Number(vol.value)); });
+      if (vol) vol.addEventListener('input', () => { vol.nextElementSibling.textContent = vol.value; const g = sonos.groups.find((x) => x.host === host); if (g) g.volume = Number(vol.value); window.thrumDesktop.sonos.volume(host, Number(vol.value)); });
     });
     updateSonosStatus();
   }
   async function updateSonosStatus() {
     const el = $('#sonos-status'); if (!el) return;
     if (!stream.active) { el.textContent = ''; return; }
-    const info = await window.nebulaDesktop.sonos.info();
+    const info = await window.thrumDesktop.sonos.info();
     el.textContent = `Zendt uit op ${info.localIp}:${info.streamPort} · ${info.listeners} luisteraar${info.listeners === 1 ? '' : 's'}`;
   }
   async function toggleSonos(host, aan) {
     if (aan) {
       if (!stream.active && !(await stream.start())) return toast('Uitzenden lukt niet op deze computer');
       if (!engine.playing && engine.hasContent()) await engine.play();
-      const r = await window.nebulaDesktop.sonos.play(host);
+      const r = await window.thrumDesktop.sonos.play(host);
       if (r.error) { toast(`Sonos: ${r.error}`); return renderSonos(); }
       sonos.playing.add(host);
       toast('Speelt nu ook op je Sonos');
     } else {
-      await window.nebulaDesktop.sonos.stop(host);
+      await window.thrumDesktop.sonos.stop(host);
       sonos.playing.delete(host);
       if (!sonos.playing.size) stream.stop();
     }
@@ -907,19 +907,19 @@
   // Bijwerken. De app haalt een nieuwe versie zelf op de achtergrond op en installeert die bij het
   // afsluiten; de balk hieronder is er alleen voor wie niet wil wachten. Nooit iets onderbreken:
   // je bent aan het luisteren.
-  if (window.nebulaDesktop?.onUpdate) {
-    window.nebulaDesktop.onUpdate(({ staat, versie }) => {
+  if (window.thrumDesktop?.onUpdate) {
+    window.thrumDesktop.onUpdate(({ staat, versie }) => {
       if (staat === 'gevonden') return toast(`Version ${versie} is downloading in the background`);
       if (staat !== 'klaar') return;
       const balk = $('#update-bar');
-      $('#update-tekst').textContent = `Version ${versie} is ready. It installs as soon as you close Nebula.`;
+      $('#update-tekst').textContent = `Version ${versie} is ready. It installs as soon as you close Thrum.`;
       balk.hidden = false;
     });
-    $('#update-nu').addEventListener('click', () => window.nebulaDesktop.installUpdate());
+    $('#update-nu').addEventListener('click', () => window.thrumDesktop.installUpdate());
     $('#update-later').addEventListener('click', () => { $('#update-bar').hidden = true; });
   }
 
-  window.nebula = { engine, visuals, get library() { return library; } }; // voor debuggen
+  window.thrum = { engine, visuals, get library() { return library; } }; // voor debuggen
 
   // ---- Start ------------------------------------------------------------------------
   renderNoise(); renderRadio(); renderTimerPresets(); renderVolumeMixer($('#settings-mixer')); syncVolumeUI();

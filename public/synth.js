@@ -1,4 +1,4 @@
-// Nebula's eigen geluiden: alles hier wordt live gemaakt met Web Audio. Geen bestanden, geen
+// Thrum's eigen geluiden: alles hier wordt live gemaakt met Web Audio. Geen bestanden, geen
 // herhaling: regen, wind, vuur, vogels, krekels, café, en generatieve muziek (ambient, lo-fi jazz,
 // speeldoos, kerstklokken). Elke generator geeft { stop() } terug en speelt naar `out`.
 (function () {
@@ -2068,7 +2068,7 @@
    */
   let lichteModus = false;
 
-  window.NebulaSynth = {
+  window.ThrumSynth = {
     list: LIST,
     setLicht(aan) { lichteModus = !!aan; },
     create(id, ctx, out) {

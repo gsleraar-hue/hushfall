@@ -1,5 +1,5 @@
 // Windows-app: start de ingebouwde server op 127.0.0.1 en toont de app in een venster.
-// De geluidsbibliotheek staat in de gebruikersmap (AppData\Roaming\Nebula\library) en kan
+// De geluidsbibliotheek staat in de gebruikersmap (AppData\Roaming\Thrum\library) en kan
 // vanuit de app zelf worden gevuld ("Geluiden ophalen").
 const { app, BrowserWindow, shell, Menu, nativeTheme, ipcMain, dialog } = require('electron');
 const path = require('node:path');
@@ -22,9 +22,35 @@ const writeConfig = (patch) => { const c = { ...readConfig(), ...patch }; fs.mkd
 const defaultLibraryDir = () => (app.isPackaged ? path.join(app.getPath('userData'), 'library') : path.join(__dirname, '..', 'public'));
 const libraryDir = () => { const c = readConfig().libraryDir; return c && fs.existsSync(c) ? c : defaultLibraryDir(); };
 
+/**
+ * De app heette eerder Sfeer en daarna Nebula. De gebruikersmap hangt aan de naam van de app, dus na
+ * het hernoemen wijst hij naar een lege map terwijl de bibliotheek — vaak vele gigabytes — nog in de
+ * oude staat. Bij de eerste start nemen we die over. We verplaatsen niets: acht gigabyte verplaatsen
+ * kan minuten duren en halverwege misgaan, dus we wijzen de oude map alleen aan in de instellingen,
+ * waar de gebruiker hem ook zelf kan veranderen.
+ */
+function erfOudeBibliotheek() {
+  const c = readConfig();
+  if (c.libraryDir || c.oudeMapBekeken) return;
+  if (fs.existsSync(path.join(defaultLibraryDir(), 'library.json'))) { writeConfig({ oudeMapBekeken: true }); return; }
+  const roaming = path.dirname(app.getPath('userData'));
+  const heeftLib = (d) => { try { return !!d && fs.existsSync(path.join(d, 'library.json')); } catch { return false; } };
+  for (const oud of ['Nebula', 'Sfeer']) {
+    // Eerst de map die de gebruiker in de oude versie zelf had aangewezen: wie zijn bibliotheek
+    // ergens anders heeft neergezet, staat niet in de standaardmap. Pas daarna de standaardmap zelf.
+    let eigen = null;
+    try { eigen = JSON.parse(fs.readFileSync(path.join(roaming, oud, 'config.json'), 'utf8')).libraryDir; } catch { /* geen oude config */ }
+    for (const kandidaat of [eigen, path.join(roaming, oud, 'library')]) {
+      if (heeftLib(kandidaat)) { writeConfig({ libraryDir: kandidaat, oudeMapBekeken: true }); return; }
+    }
+  }
+  writeConfig({ oudeMapBekeken: true });
+}
+
 async function createWindow() {
   if (!serverInfo) {
-    // De bibliotheek staat in de gebruikersmap (%APPDATA%\Nebula\library) en hangt aan de naam van de
+    if (app.isPackaged) erfOudeBibliotheek();
+    // De bibliotheek staat in de gebruikersmap (%APPDATA%\Thrum\library) en hangt aan de naam van de
     // app, niet aan het versienummer. Een nieuwe versie laat hem dus staan; de app schrijft er bij
     // het opstarten nooit iets over. Alleen de map zelf wordt aangemaakt als hij nog niet bestaat.
     fs.mkdirSync(libraryDir(), { recursive: true });
@@ -42,7 +68,7 @@ async function createWindow() {
     minWidth: 760,
     minHeight: 520,
     backgroundColor: '#0b0f1a',
-    title: 'Nebula',
+    title: 'Thrum',
     icon: path.join(__dirname, '..', 'build', 'icon.ico'),
     autoHideMenuBar: true,
     webPreferences: {
@@ -84,6 +110,15 @@ ipcMain.handle('library:chooseFolder', async () => {
   return { dir, hasLib };
 });
 ipcMain.handle('library:resetFolder', () => { writeConfig({ libraryDir: null }); return { dir: libraryDir() }; });
+/**
+ * Bronnen die de Store-versie mag ophalen. De BBC RemArc-licentie staat alleen persoonlijk,
+ * educatief en niet-commercieel gebruik toe, en de gratis Mixkit-licenties verbieden herdistributie.
+ * In een app die via de Microsoft Store wordt verspreid horen die er dus niet in. Wat overblijft is
+ * Creative Commons en publiek domein, en dat is bovendien het eerlijke verhaal: het merendeel van
+ * wat je hoort maakt de app zelf.
+ */
+const STORE_BRONNEN = ['archive', 'music', 'jazz', 'kerst', 'gregoriaans', 'commons', 'freesound'];
+
 ipcMain.handle('library:fetch', async (event, mode) => {
   if (fetchController) return { error: 'A download is already running' };
   fetchController = new AbortController();
@@ -92,6 +127,7 @@ ipcMain.handle('library:fetch', async (event, mode) => {
     const { runFetch } = await import(pathToFileURL(path.join(__dirname, '..', 'scripts', 'fetch-sounds.js')).href);
     const result = await runFetch({
       dir: libraryDir(), mode: mode === 'all' ? 'all' : 'quick', signal: fetchController.signal,
+      only: process.windowsStore ? STORE_BRONNEN : null,
       log: (line) => send('library:log', String(line)),
       progress: (p) => send('library:progress', p),
     });
@@ -121,7 +157,7 @@ const spelend = new Set(); // groepen die onze zender spelen, om ze bij afsluite
 ipcMain.handle('sonos:play', async (e, host) => {
   try {
     await ensureStreamServer();
-    await sonos.play(host, streamUrl(), 'Nebula');
+    await sonos.play(host, streamUrl(), 'Thrum');
     spelend.add(host);
     return { ok: true, url: streamUrl(), listeners: hub ? hub.listeners : 0 };
   } catch (err) { return { error: err.message }; }
@@ -146,12 +182,16 @@ ipcMain.handle('library:openFolder', () => shell.openPath(libraryDir()));
 
 /**
  * Bijwerken. De app kijkt kort na het starten of er een nieuwere versie op GitHub staat, haalt die
- * op de achtergrond binnen en installeert hem pas als je Nebula afsluit. Zo hoef je nooit zelf te
+ * op de achtergrond binnen en installeert hem pas als je Thrum afsluit. Zo hoef je nooit zelf te
  * de-installeren en onderbreekt het bijwerken nooit waar je naar aan het luisteren bent.
  * De gedownloade bibliotheek staat in de gebruikersmap en blijft dus staan.
  */
 function startBijwerken() {
   if (!app.isPackaged) return;                 // tijdens ontwikkelen is er niets om bij te werken
+  // Uit de Microsoft Store: daar werkt de Store zelf de app bij, en de installatiemap is alleen-lezen.
+  // Zelf bijwerken zou dus mislukken, en de Store keurt apps af die het toch proberen. Electron zet
+  // deze vlag zodra de app uit een MSIX-pakket draait, dus hier is geen aparte broncode voor nodig.
+  if (process.windowsStore) return;
   autoUpdater.autoDownload = true;
   autoUpdater.autoInstallOnAppQuit = true;
   const melden = (staat, extra = {}) => { if (win && !win.isDestroyed()) win.webContents.send('update:staat', { staat, ...extra }); };
