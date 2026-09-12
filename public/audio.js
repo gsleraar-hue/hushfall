@@ -266,7 +266,7 @@
   }
 
   /**
-   * Eén laag die Thrum zelf maakt met Web Audio (zie synth.js). Kost geen bestand en herhaalt nooit.
+   * Eén laag die Hushfall zelf maakt met Web Audio (zie synth.js). Kost geen bestand en herhaalt nooit.
    * De generator wordt bij pauze afgebroken zodat hij geen rekentijd meer kost.
    */
   class SynthLayer {
@@ -287,7 +287,7 @@
       clearTimeout(this.stopTimer); this.stopTimer = null;
       const t = this.engine.ctx.currentTime;
       if (!this.gen) {
-        try { this.gen = window.ThrumSynth.create(this.sound.synth, this.engine.ctx, this.gain); }
+        try { this.gen = window.HushfallSynth.create(this.sound.synth, this.engine.ctx, this.gain); }
         catch (e) { this.engine.emit('layer-error', this.sound); return; }
         this.gain.gain.cancelScheduledValues(t); this.gain.gain.setValueAtTime(0, t);
       }
@@ -306,5 +306,5 @@
     }
   }
 
-  window.ThrumEngine = Engine;
+  window.HushfallEngine = Engine;
 })();

@@ -27,4 +27,4 @@ class TapProcessor extends AudioWorkletProcessor {
     return true;
   }
 }
-registerProcessor('thrum-tap', TapProcessor);
+registerProcessor('hushfall-tap', TapProcessor);

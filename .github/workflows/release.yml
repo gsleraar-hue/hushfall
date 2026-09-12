@@ -1,4 +1,4 @@
-# Bouwt Thrum en zet de installer als release op GitHub. De app in het veld kijkt daar zelf naar
+# Bouwt Hushfall en zet de installer als release op GitHub. De app in het veld kijkt daar zelf naar
 # en werkt zichzelf bij. Draait bij een tag (v1.0.11) of handmatig via de Actions-tab.
 name: Release
 
@@ -44,5 +44,5 @@ jobs:
       # zelf via Partner Center, en daar hoort een handmatige controle bij.
       - uses: actions/upload-artifact@v4
         with:
-          name: thrum-msix
+          name: hushfall-msix
           path: dist/*.appx

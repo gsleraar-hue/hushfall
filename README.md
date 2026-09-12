@@ -1,4 +1,4 @@
-# Thrum
+# Hushfall
 
 Ambient geluiden om te focussen, ontspannen en slapen: een donkere app met sferen, een geluidenmixer, een
 ruisgenerator, ambient radio, timers en bewegende achtergronden. Alles wordt gesorteerd op **soort** (regen, zee,
@@ -7,7 +7,7 @@ cinematisch, stad, muziek).
 
 De geluiden komen uit twee hoeken:
 
-1. **Thrum's eigen geluiden** (82 stuks, `public/synth.js`): live gemaakt met Web Audio, dus geen bestanden en
+1. **Hushfall's eigen geluiden** (82 stuks, `public/synth.js`): live gemaakt met Web Audio, dus geen bestanden en
    geen herhaling. Deze zitten altijd in de app, ook direct na installatie.
    - **Natuur**: regen met losse resonerende druppels; haardvuur waarin elke knap een korte ruisexplosie is
      (een gestemde knap klinkt onherroepelijk als popcorn) met daaronder een fijn geknetter dat nooit
@@ -91,7 +91,7 @@ npm run dist           # versienummer +1 en dan installer + portable exe bouwen 
 ```
 
 `npm run dist` verhoogt eerst het patch-nummer in `package.json` en zet dat in de bestandsnamen, zodat elke
-build zijn eigen versie heeft: `Thrum Setup 1.0.1.exe` en `Thrum-portable-1.0.1.exe`. De versie staat ook
+build zijn eigen versie heeft: `Hushfall Setup 1.0.1.exe` en `Hushfall-portable-1.0.1.exe`. De versie staat ook
 onderaan **Instellingen** in de app.
 
 ```bash
@@ -103,7 +103,7 @@ npm run release        # versienummer +1, bouwen én als release op GitHub zette
 ### Bijwerken
 
 De app werkt zichzelf bij. Acht seconden na het starten, en daarna elke zes uur, kijkt hij of er een nieuwere
-release op GitHub staat, haalt die op de achtergrond binnen en installeert hem zodra je Thrum afsluit. Je hoeft
+release op GitHub staat, haalt die op de achtergrond binnen en installeert hem zodra je Hushfall afsluit. Je hoeft
 de vorige versie dus niet te de-installeren, en bijwerken onderbreekt nooit waar je naar aan het luisteren bent.
 Staat er een versie klaar, dan verschijnt bovenin een balk met **Nu herstarten** voor wie niet wil wachten. De
 gedownloade bibliotheek staat in de gebruikersmap en blijft bij een update gewoon staan.
@@ -116,7 +116,7 @@ Builds met `npm run dist` publiceren nooit en werken zichzelf ook niet bij; die 
 ### Microsoft Store (MSIX)
 
 ```bash
-npm run dist:store     # maakt de Store-tegels en bouwt dist/Thrum <versie>.appx
+npm run dist:store     # maakt de Store-tegels en bouwt dist/Hushfall <versie>.appx
 ```
 
 Dit is bewust een apart pakket, want de Store-versie gedraagt zich anders dan de installer:
@@ -164,11 +164,11 @@ Instellingen › Beeld. Die laat de ruimtegalm per geluid weg en halveert de dee
 `OfflineAudioContext`: die rendert zo snel als de machine kan, dus rendertijd gedeeld door geluidsduur is
 precies het deel van een kern dat een knoop in werkelijkheid kost.
 
-`npm run dist` maakt `dist/Thrum Setup 1.0.0.exe` (installer) en `dist/Thrum-portable.exe`. De 82 eigen geluiden
+`npm run dist` maakt `dist/Hushfall Setup 1.0.0.exe` (installer) en `dist/Hushfall-portable.exe`. De 82 eigen geluiden
 zitten in de exe en werken direct. Opnames zitten er niet in (dat zouden gigabytes zijn); die haal je erbij via
 **Instellingen › Bibliotheek**:
 
-- **Alle ambient geluiden ophalen** of **Snelle selectie**: downloadt naar `%APPDATA%\Thrum\library`, met
+- **Alle ambient geluiden ophalen** of **Snelle selectie**: downloadt naar `%APPDATA%\Hushfall\library`, met
   voortgang en een stopknop. Later hervatten kan; bestaande geluiden worden overgeslagen.
 - **Bestaande bibliotheekmap gebruiken…**: wijs een map met `library.json` en `sounds` aan (bijvoorbeeld de
   `public`-map van dit project). De app leest die direct, zonder kopiëren of opnieuw downloaden.
@@ -178,7 +178,7 @@ De exe is niet ondertekend. Windows SmartScreen kan bij de eerste start waarschu
 
 ## Wat zit erin
 
-- **Sferen**: rijen kaarten per sfeer, een rij met Thrum's eigen geluiden, plus samengestelde mixen
+- **Sferen**: rijen kaarten per sfeer, een rij met Hushfall's eigen geluiden, plus samengestelde mixen
   (bijvoorbeeld "Regenachtige leeskamer" = regen + open haard + huisgeluid). Elke soort heeft een eigen
   kleurenpalet en deeltjes-effect (regen, sneeuw, bladeren, vuurvliegjes, vonken, bellen, sterren).
 - **Mixer**: alle geluiden gegroepeerd per soort, met per geluid een schakelaar en volumeslider, zoeken en filters.
@@ -193,10 +193,10 @@ De exe is niet ondertekend. Windows SmartScreen kan bij de eerste start waarschu
 
 ## Sonos
 
-Klik in de Windows-app op het speaker-icoon rechtsboven. Thrum zoekt je speakers met SSDP en zet per kamer
+Klik in de Windows-app op het speaker-icoon rechtsboven. Hushfall zoekt je speakers met SSDP en zet per kamer
 een schakelaar; het volume per kamer regel je in hetzelfde lijstje.
 
-Hoe het werkt: een Sonos haalt audio zelf op van een URL, je kunt er niets naartoe duwen. Thrum wordt daarom
+Hoe het werkt: een Sonos haalt audio zelf op van een URL, je kunt er niets naartoe duwen. Hushfall wordt daarom
 een radiozender op je eigen netwerk. De gemengde audio (mixen, eigen geluiden, ruis) wordt in een aparte thread
 live naar MP3 omgezet (128 kbps, `public/lib/lame.min.js`) en aangeboden op `http://<jouw-ip>:34872/stream.mp3`.
 De speaker krijgt via UPnP de opdracht die zender te spelen. Geen account, geen cloud, alles binnen je netwerk.
@@ -206,7 +206,7 @@ De speaker krijgt via UPnP de opdracht die zender te spelen. Geen account, geen 
 - Reken op twee tot vijf seconden vertraging: een Sonos buffert een radiostream. Tegelijk op je pc en je Sonos
   luisteren klinkt daardoor rommelig; dempen op je pc (M) stopt de uitzending niet.
 - De slaaptimer werkt ook op de Sonos, want de aftakking zit ná het uitfaden en vóór je pc-volume.
-- Je pc moet aan blijven en Thrum open staan; die is immers de zender. Bij afsluiten stopt Thrum je speakers.
+- Je pc moet aan blijven en Hushfall open staan; die is immers de zender. Bij afsluiten stopt Hushfall je speakers.
 - Radio gaat niet mee in de uitzending (die stream loopt buiten de mixer om). Een Sonos kan zulke zenders zelf
   afspelen.
 
@@ -214,7 +214,7 @@ De speaker krijgt via UPnP de opdracht die zender te spelen. Geen account, geen 
 
 | Bron | Wat | Licentie |
 | --- | --- | --- |
-| Thrum zelf (`public/synth.js`) | 82 eigen geluiden en muziekstukken, live gemaakt met Web Audio | onderdeel van dit project |
+| Hushfall zelf (`public/synth.js`) | 82 eigen geluiden en muziekstukken, live gemaakt met Web Audio | onderdeel van dit project |
 | [BBC Sound Effects](https://sound-effects.bbcrewind.co.uk/) | 33.000+ opnames, waaronder duizenden sferen en natuuropnames | RemArc-licentie: persoonlijk, educatief en niet-commercieel gebruik |
 | [Internet Archive](https://archive.org/) | veldopnames (o.a. radio aporee) en ambient muziek van netlabels | Creative Commons, per opname vermeld |
 | [Great 78 Project](https://archive.org/details/georgeblood) | gerestaureerde 78-toerenplaten: jazz, swing en kerstmuziek uit de jaren 1920–1950 | historische opnamen, per plaat vermeld |
@@ -244,7 +244,7 @@ catalogus­codes, tracknummers, datums en HOOFDLETTERS verdwijnen; de originele 
 
 ## Vormgeving
 
-Thrum heeft een eigen gezicht: een warm schemerpalet (inkt, zand, koraal), het serif-lettertype Fraunces
+Hushfall heeft een eigen gezicht: een warm schemerpalet (inkt, zand, koraal), het serif-lettertype Fraunces
 (meegeleverd, OFL-licentie) voor koppen en titels, een bovenbalk met tabs, een zwevende spelercapsule en een
 achtergrond met lucht en heuvels in de kleuren van de soort die speelt. Elk geluid krijgt een eigen
 procedureel getekende illustratie (regenstrepen, golven, vlammen, boomsilhouetten, skyline, planeet, notenbalk),

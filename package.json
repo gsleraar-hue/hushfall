@@ -1,7 +1,7 @@
 {
-  "name": "thrum",
-  "productName": "Thrum",
-  "version": "1.0.15",
+  "name": "hushfall",
+  "productName": "Hushfall",
+  "version": "1.0.16",
   "description": "Ambient sound and soundscapes to focus, unwind and sleep — most of it generated live by the app itself",
   "private": true,
   "type": "module",
@@ -20,8 +20,8 @@
     "dist:store": "node scripts/make-icon.js && electron-builder --win appx --publish never"
   },
   "build": {
-    "appId": "nl.janwolter.thrum",
-    "productName": "Thrum",
+    "appId": "nl.janwolter.hushfall",
+    "productName": "Hushfall",
     "directories": {
       "output": "dist",
       "buildResources": "build"
@@ -33,6 +33,7 @@
       "public/**",
       "!public/sounds/**",
       "!public/library.json",
+      "build/icon.ico",
       "package.json"
     ],
     "win": {
@@ -56,18 +57,18 @@
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "perMachine": false,
-      "shortcutName": "Thrum",
+      "shortcutName": "Hushfall",
       "deleteAppDataOnUninstall": false
     },
     "portable": {
-      "artifactName": "Thrum-portable-${version}.exe"
+      "artifactName": "Hushfall-portable-${version}.exe"
     },
     "appx": {
       "identityName": "00000000-0000-0000-0000-000000000000",
       "publisher": "CN=Jan-Wolter",
       "publisherDisplayName": "Jan-Wolter",
-      "applicationId": "Thrum",
-      "displayName": "Thrum",
+      "applicationId": "Hushfall",
+      "displayName": "Hushfall",
       "backgroundColor": "#0b0f1a",
       "showNameOnTiles": true,
       "languages": [

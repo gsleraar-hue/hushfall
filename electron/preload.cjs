@@ -6,7 +6,7 @@ const listen = (channel) => (cb) => {
   return () => ipcRenderer.removeListener(channel, handler);
 };
 
-contextBridge.exposeInMainWorld('thrumDesktop', {
+contextBridge.exposeInMainWorld('hushfallDesktop', {
   isDesktop: true,
   platform: process.platform,
   info: () => ipcRenderer.invoke('library:info'),

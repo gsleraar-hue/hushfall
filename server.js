@@ -52,7 +52,7 @@ export function createStreamHub({ preroll = 48 * 1024 } = {}) {
         'Cache-Control': 'no-cache, no-store',
         'Accept-Ranges': 'none',
         Connection: 'close',
-        'icy-name': 'Thrum',
+        'icy-name': 'Hushfall',
         'icy-genre': 'Ambient',
       });
       if (recent.length) res.write(recent);
@@ -151,7 +151,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.a
   const lan = process.argv.includes('--lan');
   const port = Number(portArg ? portArg.split('=')[1] : process.env.PORT || 8790);
   startServer({ port, host: lan ? '0.0.0.0' : '127.0.0.1' }).then(({ port }) => {
-    console.log(`Thrum draait op http://127.0.0.1:${port}`);
+    console.log(`Hushfall draait op http://127.0.0.1:${port}`);
     if (lan) {
       for (const ifs of Object.values(os.networkInterfaces())) for (const i of ifs) {
         if (i.family === 'IPv4' && !i.internal) console.log(`  op je telefoon: http://${i.address}:${port}`);

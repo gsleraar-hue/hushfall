@@ -1,4 +1,4 @@
-// Zet de audio van Thrum in een aparte thread om naar MP3 en stuurt die naar de eigen server,
+// Zet de audio van Hushfall in een aparte thread om naar MP3 en stuurt die naar de eigen server,
 // die het als radiozender aanbiedt aan Sonos. Zo blijft de UI en de audio zelf vloeiend lopen.
 /* global lamejs */
 importScripts('lib/lame.min.js');

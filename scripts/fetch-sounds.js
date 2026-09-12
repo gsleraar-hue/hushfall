@@ -28,7 +28,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const UA = 'Thrum/1.0 (persoonlijke ambient-speler)';
+const UA = 'Hushfall/1.0 (persoonlijke ambient-speler)';
 const MB = 1024 * 1024;
 
 // ---------------------------------------------------------------------------
@@ -674,7 +674,7 @@ export async function runFetch(opts = {}) {
   for (const s of lib.sounds) usedPerSource[s.source] = (usedPerSource[s.source] || 0) + (s.bytes || 0);
   const enabled = (s) => !only || only.includes(s);
 
-  log(`Thrum: geluiden ophalen (${mode === 'all' ? 'alles' : 'snelle selectie'}${dry ? ', dry run' : ''}). Bibliotheek: ${lib.sounds.length} geluiden, ${(totalBytes / MB).toFixed(0)} MB. Limiet ${(maxBytes / 1024 / MB).toFixed(1)} GB.`);
+  log(`Hushfall: geluiden ophalen (${mode === 'all' ? 'alles' : 'snelle selectie'}${dry ? ', dry run' : ''}). Bibliotheek: ${lib.sounds.length} geluiden, ${(totalBytes / MB).toFixed(0)} MB. Limiet ${(maxBytes / 1024 / MB).toFixed(1)} GB.`);
   progress({ phase: 'zoeken', done: 0, total: 0, added: 0, count: lib.sounds.length, bytes: totalBytes });
 
   // Fase 1: kandidaten verzamelen

@@ -1,5 +1,5 @@
 // Windows-app: start de ingebouwde server op 127.0.0.1 en toont de app in een venster.
-// De geluidsbibliotheek staat in de gebruikersmap (AppData\Roaming\Thrum\library) en kan
+// De geluidsbibliotheek staat in de gebruikersmap (AppData\Roaming\Hushfall\library) en kan
 // vanuit de app zelf worden gevuld ("Geluiden ophalen").
 const { app, BrowserWindow, shell, Menu, nativeTheme, ipcMain, dialog } = require('electron');
 const path = require('node:path');
@@ -23,7 +23,7 @@ const defaultLibraryDir = () => (app.isPackaged ? path.join(app.getPath('userDat
 const libraryDir = () => { const c = readConfig().libraryDir; return c && fs.existsSync(c) ? c : defaultLibraryDir(); };
 
 /**
- * De app heette eerder Sfeer en daarna Nebula. De gebruikersmap hangt aan de naam van de app, dus na
+ * De app heette eerder Sfeer, Nebula en heel kort Thrum. De gebruikersmap hangt aan de naam van de app, dus na
  * het hernoemen wijst hij naar een lege map terwijl de bibliotheek — vaak vele gigabytes — nog in de
  * oude staat. Bij de eerste start nemen we die over. We verplaatsen niets: acht gigabyte verplaatsen
  * kan minuten duren en halverwege misgaan, dus we wijzen de oude map alleen aan in de instellingen,
@@ -35,7 +35,7 @@ function erfOudeBibliotheek() {
   if (fs.existsSync(path.join(defaultLibraryDir(), 'library.json'))) { writeConfig({ oudeMapBekeken: true }); return; }
   const roaming = path.dirname(app.getPath('userData'));
   const heeftLib = (d) => { try { return !!d && fs.existsSync(path.join(d, 'library.json')); } catch { return false; } };
-  for (const oud of ['Nebula', 'Sfeer']) {
+  for (const oud of ['Thrum', 'Nebula', 'Sfeer']) {
     // Eerst de map die de gebruiker in de oude versie zelf had aangewezen: wie zijn bibliotheek
     // ergens anders heeft neergezet, staat niet in de standaardmap. Pas daarna de standaardmap zelf.
     let eigen = null;
@@ -50,7 +50,7 @@ function erfOudeBibliotheek() {
 async function createWindow() {
   if (!serverInfo) {
     if (app.isPackaged) erfOudeBibliotheek();
-    // De bibliotheek staat in de gebruikersmap (%APPDATA%\Thrum\library) en hangt aan de naam van de
+    // De bibliotheek staat in de gebruikersmap (%APPDATA%\Hushfall\library) en hangt aan de naam van de
     // app, niet aan het versienummer. Een nieuwe versie laat hem dus staan; de app schrijft er bij
     // het opstarten nooit iets over. Alleen de map zelf wordt aangemaakt als hij nog niet bestaat.
     fs.mkdirSync(libraryDir(), { recursive: true });
@@ -68,7 +68,7 @@ async function createWindow() {
     minWidth: 760,
     minHeight: 520,
     backgroundColor: '#0b0f1a',
-    title: 'Thrum',
+    title: 'Hushfall',
     icon: path.join(__dirname, '..', 'build', 'icon.ico'),
     autoHideMenuBar: true,
     webPreferences: {
@@ -157,7 +157,7 @@ const spelend = new Set(); // groepen die onze zender spelen, om ze bij afsluite
 ipcMain.handle('sonos:play', async (e, host) => {
   try {
     await ensureStreamServer();
-    await sonos.play(host, streamUrl(), 'Thrum');
+    await sonos.play(host, streamUrl(), 'Hushfall');
     spelend.add(host);
     return { ok: true, url: streamUrl(), listeners: hub ? hub.listeners : 0 };
   } catch (err) { return { error: err.message }; }
@@ -182,7 +182,7 @@ ipcMain.handle('library:openFolder', () => shell.openPath(libraryDir()));
 
 /**
  * Bijwerken. De app kijkt kort na het starten of er een nieuwere versie op GitHub staat, haalt die
- * op de achtergrond binnen en installeert hem pas als je Thrum afsluit. Zo hoef je nooit zelf te
+ * op de achtergrond binnen en installeert hem pas als je Hushfall afsluit. Zo hoef je nooit zelf te
  * de-installeren en onderbreekt het bijwerken nooit waar je naar aan het luisteren bent.
  * De gedownloade bibliotheek staat in de gebruikersmap en blijft dus staan.
  */

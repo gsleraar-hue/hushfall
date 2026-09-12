@@ -127,8 +127,8 @@ async function listGroups() {
   return spelers.map((s) => ({ id: s.uuid, host: s.host, model: s.model, name: s.room, rooms: [s.room] }));
 }
 
-/** Laat een groep de zender van Thrum spelen. */
-async function play(host, streamUrl, titel = 'Thrum') {
+/** Laat een groep de zender van Hushfall spelen. */
+async function play(host, streamUrl, titel = 'Hushfall') {
   const meta = `<DIDL-Lite xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:upnp="urn:schemas-upnp-org:metadata-1-0/upnp/" xmlns:r="urn:schemas-rinconnetworks-com:metadata-1-0/" xmlns="urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/"><item id="-1" parentID="-1" restricted="true"><dc:title>${esc(titel)}</dc:title><upnp:class>object.item.audioItem.audioBroadcast</upnp:class><desc id="cdudn" nameSpace="urn:schemas-rinconnetworks-com:metadata-1-0/">SA_RINCON65031_</desc></item></DIDL-Lite>`;
   // x-rincon-mp3radio: laat de speler de stream als internetradio behandelen (eindeloos, geen zoeken).
   const uri = `x-rincon-mp3radio://${streamUrl.replace(/^https?:\/\//, '')}`;
