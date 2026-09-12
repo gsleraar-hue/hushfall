@@ -54,14 +54,14 @@ const KINDS = [
   ['ruimte', /\b(drone|space|ambien\w*|atmosphere|atmos|tunnel|cave|cavern|church|cathedral|interior|room tone|reverb|hangar|warehouse|basement|cellar|ventilation|industrial|factory|machine\w*|generator|electric\w*|static|noise|spaceship|sci-?fi|dark|eerie|haunted|mine|quarry|power station|air conditioning|exterior|general)\b/i],
 ];
 export const KIND_LABELS = {
-  regen: 'Regen', onweer: 'Onweer & storm', wind: 'Wind', water: 'Water & beken', zee: 'Zee & strand',
-  vuur: 'Vuur', vogels: 'Vogels', bos: 'Bos & natuur', nacht: 'Nacht & insecten', dieren: 'Dieren',
-  stad: 'Stad & verkeer', cafe: 'Café & mensen', huis: 'Huis', ruimte: 'Ruimtes & drones', muziek: 'Ambient muziek',
-  jazz: 'Jazz', kerst: 'Kerst', gregoriaans: 'Middeleeuwse kerkmuziek',
+  regen: 'Rain', onweer: 'Thunder & storm', wind: 'Wind', water: 'Water & streams', zee: 'Sea & shore',
+  vuur: 'Fire', vogels: 'Birds', bos: 'Forest & nature', nacht: 'Night & insects', dieren: 'Animals',
+  stad: 'City & traffic', cafe: 'Café & people', huis: 'Indoors', ruimte: 'Rooms & drones', muziek: 'Ambient music',
+  jazz: 'Jazz', kerst: 'Christmas', gregoriaans: 'Medieval church music',
 };
 export const MOOD_LABELS = {
-  focus: 'Focus & werken', ontspanning: 'Ontspanning', slaap: 'Slapen', natuur: 'Natuur', koffie: 'Koffiehuis',
-  feest: 'Feestelijk', cinematisch: 'Sfeer & cinematisch', stad: 'Stad & mensen', muziek: 'Ambient muziek',
+  focus: 'Focus & work', ontspanning: 'Unwind', slaap: 'Sleep', natuur: 'Nature', koffie: 'Coffee house',
+  feest: 'Festive', cinematisch: 'Atmospheric & cinematic', stad: 'City & people', muziek: 'Ambient music',
 };
 const KIND_MOODS = {
   regen: ['focus', 'ontspanning', 'slaap', 'natuur'],
@@ -96,7 +96,7 @@ export function classify(text, forcedKind) {
 }
 const SOURCE_NAMES = {
   bbc: 'BBC Sound Effects', mixkit: 'Mixkit', archive: 'Internet Archive', music: 'Internet Archive (netlabels)',
-  archive78: 'Internet Archive (78 toeren)', mixkitmusic: 'Mixkit (muziek)', commons: 'Wikimedia Commons', freesound: 'Freesound',
+  archive78: 'Internet Archive (78 rpm)', mixkitmusic: 'Mixkit (music)', commons: 'Wikimedia Commons', freesound: 'Freesound',
 };
 /** Duur uit Internet Archive-metadata: seconden ("148.46") of "mm:ss" / "h:mm:ss". */
 function parseLength(v) {

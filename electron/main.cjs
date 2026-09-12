@@ -74,8 +74,8 @@ ipcMain.handle('library:info', () => {
 });
 // Een bestaande bibliotheekmap kiezen (met library.json en sounds/), bijvoorbeeld de public-map van het project.
 ipcMain.handle('library:chooseFolder', async () => {
-  if (fetchController) return { error: 'Er loopt nog een download; stop die eerst.' };
-  const r = await dialog.showOpenDialog(win, { title: 'Kies de map met library.json en sounds', properties: ['openDirectory'], defaultPath: libraryDir() });
+  if (fetchController) return { error: 'A download is still running; stop it first.' };
+  const r = await dialog.showOpenDialog(win, { title: 'Choose the folder containing library.json and sounds', properties: ['openDirectory'], defaultPath: libraryDir() });
   if (r.canceled || !r.filePaths[0]) return { canceled: true };
   const dir = r.filePaths[0];
   const hasLib = fs.existsSync(path.join(dir, 'library.json'));
@@ -85,7 +85,7 @@ ipcMain.handle('library:chooseFolder', async () => {
 });
 ipcMain.handle('library:resetFolder', () => { writeConfig({ libraryDir: null }); return { dir: libraryDir() }; });
 ipcMain.handle('library:fetch', async (event, mode) => {
-  if (fetchController) return { error: 'Er loopt al een download' };
+  if (fetchController) return { error: 'A download is already running' };
   fetchController = new AbortController();
   const send = (ch, data) => { if (win && !win.isDestroyed()) win.webContents.send(ch, data); };
   try {
@@ -97,7 +97,7 @@ ipcMain.handle('library:fetch', async (event, mode) => {
     });
     return result;
   } catch (e) {
-    return { error: e.message === 'Gestopt' ? 'gestopt door gebruiker' : e.message, added: 0 };
+    return { error: e.message === 'Gestopt' ? 'stopped by the user' : e.message, added: 0 };
   } finally {
     fetchController = null;
   }
