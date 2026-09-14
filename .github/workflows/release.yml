@@ -31,6 +31,10 @@ jobs:
   # keer zelf toestemming via Systeeminstellingen > Privacy en beveiliging.
   mac:
     runs-on: macos-latest
+    # Na Windows, niet ernaast: allebei de taken maken dezelfde release aan. Tegelijk
+    # betekent twee releases met hetzelfde label en een taak die struikelt. Zo vindt
+    # de tweede de release die de eerste al heeft gemaakt.
+    needs: windows
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
