@@ -24,9 +24,25 @@ jobs:
         with:
           node-version: 22
           cache: npm
+      # Electron zelf (ruim 100 MB per architectuur) komt van een server die
+      # af en toe een 504 geeft. Wat al eens is opgehaald, blijft hier liggen.
+      - uses: actions/cache@v5
+        with:
+          path: |
+            ~/AppData/Local/electron/Cache
+            ~/AppData/Local/electron-builder/Cache
+          key: electron-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
       - run: npm ci
       # Geen bump hier: het versienummer in package.json is leidend en staat al in de tag.
-      - run: npx electron-builder --win --publish never
+      - name: Bouwen (met herkansing bij een haperende download)
+        shell: bash
+        run: |
+          for poging in 1 2 3; do
+            npx electron-builder --win --publish never && exit 0
+            echo "poging $poging strandde - even wachten en opnieuw"
+            sleep 30
+          done
+          exit 1
       - name: Wat is er gemaakt
         if: always()
         shell: bash
@@ -52,9 +68,25 @@ jobs:
         with:
           node-version: 22
           cache: npm
+      # Electron zelf (ruim 100 MB per architectuur) komt van een server die
+      # af en toe een 504 geeft. Wat al eens is opgehaald, blijft hier liggen.
+      - uses: actions/cache@v5
+        with:
+          path: |
+            ~/Library/Caches/electron
+            ~/Library/Caches/electron-builder
+          key: electron-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
       - run: npm ci
       - run: node scripts/make-icon.js
-      - run: npx electron-builder --mac --publish never
+      - name: Bouwen (met herkansing bij een haperende download)
+        shell: bash
+        run: |
+          for poging in 1 2 3; do
+            npx electron-builder --mac --publish never && exit 0
+            echo "poging $poging strandde - even wachten en opnieuw"
+            sleep 30
+          done
+          exit 1
         env:
           # Zonder Apple-certificaat valt er niets te ondertekenen met een identiteit; we doen het
           # zelf ad-hoc na het inpakken. Laat je dit weg, dan gaat electron-builder alsnog zoeken.
