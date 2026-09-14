@@ -14,8 +14,8 @@ jobs:
   windows:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -32,8 +32,8 @@ jobs:
   mac:
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -47,13 +47,13 @@ jobs:
           CSC_IDENTITY_AUTO_DISCOVERY: false
   # Het MSIX-pakket voor de Microsoft Store. Bewust een aparte taak: dit pakket werkt zichzelf niet
   # bij (dat doet de Store) en haalt geen geluiden op bij bronnen die commercieel gebruik verbieden.
-  # De runner van GitHub heeft de Windows SDK al staan, dus makeappx.exe is hier gewoon beschikbaar â€”
+  # De runner van GitHub heeft de Windows SDK al staan, dus makeappx.exe is hier gewoon beschikbaar Ã¢â‚¬â€
   # op een gewone werkplek moet je die SDK eerst zelf installeren.
   store:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -62,7 +62,7 @@ jobs:
       - run: npx electron-builder --win appx --publish never
       # Het pakket wordt niet gepubliceerd maar als bestand bewaard: inleveren bij de Store doe je
       # zelf via Partner Center, en daar hoort een handmatige controle bij.
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: hushfall-msix
           path: dist/*.appx
