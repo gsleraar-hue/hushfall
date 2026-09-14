@@ -1,5 +1,16 @@
 // Audio-engine: Web Audio met bussen (hoofd, effecten, ruis), geluidslagen die loopen,
 // een ruisgenerator, radio via <audio> en een timer met uitfaden.
+//
+// SomaFM heeft meer dan een streamserver. Valt de eerste uit, of komt hij op
+// een bepaald netwerk niet door, dan proberen we de volgende - en als laatste
+// het gewone http-adres.
+function radioAdressen(url) {
+  const lijst = [url];
+  const m = /^https?:\/\/ice(\d)\.somafm\.com\/(.+)$/.exec(url);
+  if (m) for (const nr of ['2', '4', '6', '1']) if (nr !== m[1]) lijst.push('https://ice' + nr + '.somafm.com/' + m[2]);
+  if (url.startsWith('https://')) lijst.push('http://' + url.slice(8));
+  return lijst;
+}
 (function () {
   class Engine {
     constructor() {
@@ -97,6 +108,10 @@
       this.playing = false;
       for (const l of this.layers.values()) l.pause();
       this.stopNoiseNodes();
+      // Een live zender kun je niet even stilzetten en later oppakken: pauze
+      // met alleen radio aan betekent radio uit. Anders bleef de zender staan
+      // als "Verbinden..." en kwam hij bij het volgende geluid weer mee.
+      if (this.radio.station && !this.layers.size && !this.noise.on) { this.stopRadio(); return; }
       if (this.radio.el) this.radio.el.pause();
       this.emit('state');
     }
@@ -181,20 +196,43 @@
     playRadio(station) {
       if (!this.radio.el) {
         const el = new Audio(); el.preload = 'none';
-        el.addEventListener('playing', () => { this.radio.playing = true; this.emit('radio'); this.emit('state'); });
+        el.addEventListener('playing', () => { clearTimeout(this.radio.klok); this.radio.playing = true; this.emit('radio'); this.emit('state'); });
         el.addEventListener('pause', () => { this.radio.playing = false; this.emit('radio'); });
-        el.addEventListener('error', () => { this.radio.playing = false; this.emit('radio-error', station); this.emit('radio'); });
+        el.addEventListener('error', () => this._radioFout());
         el.addEventListener('waiting', () => this.emit('radio'));
         this.radio.el = el;
       }
       this.radio.station = station;
-      this.radio.el.src = station.url;
-      this.radio.el.volume = this.muted ? 0 : Math.min(1, this.volumes.master * this.volumes.radio);
+      this.radio.adressen = radioAdressen(station.url);
+      this.radio.poging = 0;
+      this._radioStart();
+    }
+    _radioStart() {
+      const el = this.radio.el;
+      el.src = this.radio.adressen[this.radio.poging];
+      el.volume = this.muted ? 0 : Math.min(1, this.volumes.master * this.volumes.radio);
       this.playing = true;
-      this.radio.el.play().catch(() => this.emit('radio-error', station));
+      el.play().catch((e) => this._radioFout(e && e.name));
+      // Blijft het bij "Verbinden..."? Dan is er ook iets mis, alleen zonder foutmelding.
+      clearTimeout(this.radio.klok);
+      this.radio.klok = setTimeout(() => { if (this.radio.station && !this.radio.playing) this._radioFout('geen antwoord binnen 20 seconden'); }, 20000);
       this.emit('radio'); this.emit('state');
     }
+    _radioFout(naam) {
+      const station = this.radio.station;
+      if (!station) return;
+      const el = this.radio.el;
+      const code = el && el.error ? el.error.code : 0;
+      const detail = el && el.error && el.error.message ? el.error.message : '';
+      // Nog een adres over? Dan die.
+      if (this.radio.poging + 1 < this.radio.adressen.length) { this.radio.poging++; this._radioStart(); return; }
+      const uitleg = { 1: 'afgebroken', 2: 'netwerkfout: de stream komt niet binnen', 3: 'de audio is niet te decoderen', 4: 'adres of formaat wordt niet ondersteund' }[code] || naam || 'onbekende fout';
+      const geprobeerd = this.radio.adressen.length;
+      this.stopRadio();
+      this.emit('radio-error', { ...station, uitleg, code, detail, geprobeerd });
+    }
     stopRadio() {
+      clearTimeout(this.radio.klok);
       if (this.radio.el) { this.radio.el.pause(); this.radio.el.removeAttribute('src'); this.radio.el.load(); }
       this.radio.station = null; this.radio.playing = false;
       if (!this.layers.size && !this.noise.on) this.playing = false;

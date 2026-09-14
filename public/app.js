@@ -715,6 +715,16 @@
     if (engine.radio.station && mains.length) sub += ` · radio: ${engine.radio.station.name}`;
     if (engine.noise.on && (mains.length || all.length)) sub += ' · ruis';
     $('#player-title').textContent = title; $('#player-sub').textContent = sub;
+    // Speelt er een zender, dan staat er een knop om hem uit te zetten - vanaf elke pagina.
+    let radioUit = $('#btn-radio-uit');
+    if (engine.radio.station && !radioUit) {
+      radioUit = document.createElement('button');
+      radioUit.id = 'btn-radio-uit'; radioUit.className = 'radio-uit'; radioUit.type = 'button';
+      radioUit.title = 'Radio uit'; radioUit.setAttribute('aria-label', 'Radio uit');
+      radioUit.textContent = 'radio uit';
+      radioUit.addEventListener('click', () => { engine.stopRadio(); renderRadio(); updatePlayer(); save(); });
+      $('#player-info').appendChild(radioUit);
+    } else if (!engine.radio.station && radioUit) radioUit.remove();
     const th = $('#player-thumb'); th.innerHTML = kind ? art(kind, seed) : '';
     player.classList.toggle('playing', engine.playing && engine.hasContent());
     $('#immersive').classList.toggle('playing', engine.playing && engine.hasContent());
@@ -805,7 +815,7 @@
   engine.on((type, data) => {
     if (type === 'state' || type === 'layers' || type === 'radio' || type === 'noise') updatePlayer();
     if (type === 'layers') { if (settings.mixerKind === 'actief') renderMixerGroups(); }
-    if (type === 'radio-error') toast(`Zender ${data.name} is niet bereikbaar`);
+    if (type === 'radio-error') { toast(`${data.name}: ${data.uitleg}` + (data.geprobeerd > 1 ? ` (${data.geprobeerd} adressen geprobeerd)` : '')); renderRadio(); }
     if (type === 'layer-error') { toast(`Kan ${data.title} niet afspelen`); engine.removeLayer(data.id); }
     if (type === 'volumes') syncVolumeUI();
   });
