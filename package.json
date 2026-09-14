@@ -1,12 +1,15 @@
 {
   "name": "hushfall",
   "productName": "Hushfall",
-  "version": "1.0.18",
+  "version": "1.0.19",
   "description": "Ambient sound and soundscapes to focus, unwind and sleep — most of it generated live by the app itself",
-  "private": true,
-  "type": "module",
-  "main": "electron/main.cjs",
   "author": "Jan-Wolter",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gsleraar-hue/hushfall.git"
+  },
+  "main": "electron/main.cjs",
+  "type": "module",
   "scripts": {
     "dev": "node server.js",
     "fetch": "node scripts/fetch-sounds.js",
@@ -102,8 +105,16 @@
     "dmg": {
       "title": "Hushfall"
     },
-    "afterPack": "build/na-verpakken.cjs"
+    "afterPack": "build/na-verpakken.cjs",
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "gsleraar-hue",
+        "repo": "hushfall"
+      }
+    ]
   },
+  "private": true,
   "devDependencies": {
     "electron": "^44.2.0",
     "electron-builder": "^26.15.3",
