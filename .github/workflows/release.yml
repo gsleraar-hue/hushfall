@@ -1,5 +1,10 @@
-# Bouwt Hushfall en zet de installer als release op GitHub. De app in het veld kijkt daar zelf naar
+# Bouwt Hushfall en zet de bestanden als release op GitHub. De app in het veld kijkt daar zelf naar
 # en werkt zichzelf bij. Draait bij een tag (v1.0.11) of handmatig via de Actions-tab.
+#
+# Het bouwen en het publiceren zijn met opzet gescheiden. Liet je electron-builder zelf publiceren,
+# dan maakte hij per bestand een release aan als die er nog niet stond - en omdat hij de bestanden
+# tegelijk uploadt, ontstonden er twee releases met hetzelfde label, elk met de helft erin. Nu
+# bouwen de taken alleen, bewaren ze wat ze maken, en zet een laatste taak alles in een keer neer.
 name: Release
 
 on:
@@ -21,20 +26,26 @@ jobs:
           cache: npm
       - run: npm ci
       # Geen bump hier: het versienummer in package.json is leidend en staat al in de tag.
-      - run: npx electron-builder --win --publish always
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - run: npx electron-builder --win --publish never
+      - name: Wat is er gemaakt
+        if: always()
+        shell: bash
+        run: ls -la dist/ || echo "geen dist-map"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: bouwsel-windows
+          path: |
+            dist/*.exe
+            dist/*.blockmap
+            dist/latest.yml
+          if-no-files-found: error
 
   # De Mac-versie. GitHub heeft Macs staan, dus een eigen Mac is niet nodig. De app wordt ad-hoc
-  # ondertekend (zie build/na-verpakken.js): gratis, en genoeg om te mogen starten op Apple Silicon.
+  # ondertekend (zie build/na-verpakken.cjs): gratis, en genoeg om te mogen starten op Apple Silicon.
   # Een echte notarisatie vraagt een Apple-account van $99 per jaar; zonder dat geef je de eerste
   # keer zelf toestemming via Systeeminstellingen > Privacy en beveiliging.
   mac:
     runs-on: macos-latest
-    # Na Windows, niet ernaast: allebei de taken maken dezelfde release aan. Tegelijk
-    # betekent twee releases met hetzelfde label en een taak die struikelt. Zo vindt
-    # de tweede de release die de eerste al heeft gemaakt.
-    needs: windows
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -43,12 +54,25 @@ jobs:
           cache: npm
       - run: npm ci
       - run: node scripts/make-icon.js
-      - run: npx electron-builder --mac --publish always
+      - run: npx electron-builder --mac --publish never
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # Zonder Apple-certificaat valt er niets te ondertekenen met een identiteit; we doen het
           # zelf ad-hoc na het inpakken. Laat je dit weg, dan gaat electron-builder alsnog zoeken.
           CSC_IDENTITY_AUTO_DISCOVERY: false
+      - name: Wat is er gemaakt
+        if: always()
+        shell: bash
+        run: ls -la dist/ || echo "geen dist-map"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: bouwsel-mac
+          path: |
+            dist/*.dmg
+            dist/*.zip
+            dist/*.blockmap
+            dist/latest-mac.yml
+          if-no-files-found: error
+
   # Het MSIX-pakket voor de Microsoft Store. Bewust een aparte taak: dit pakket werkt zichzelf niet
   # bij (dat doet de Store) en haalt geen geluiden op bij bronnen die commercieel gebruik verbieden.
   # De runner van GitHub heeft de Windows SDK al staan, dus makeappx.exe is daar beschikbaar;
@@ -70,3 +94,22 @@ jobs:
         with:
           name: hushfall-msix
           path: dist/*.appx
+
+  # Een taak, een release. Hier komt alles samen wat Windows en Mac hebben gemaakt.
+  uitgeven:
+    needs: [windows, mac]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v7
+        with:
+          pattern: bouwsel-*
+          merge-multiple: true
+          path: uitgifte
+      - name: Wat gaat eruit
+        run: ls -la uitgifte/
+      - uses: softprops/action-gh-release@v3
+        with:
+          files: uitgifte/*
+          draft: false
+          generate_release_notes: true
