@@ -224,5 +224,14 @@ if (!gotLock) {
     Promise.allSettled([...spelend].map((h) => sonos.stop(h))).then(() => { spelend.clear(); app.quit(); });
     setTimeout(() => app.exit(0), 2500); // niet blijven hangen als een speaker niet reageert
   });
-  app.on('window-all-closed', () => { if (fetchController) fetchController.abort(); if (serverInfo) serverInfo.server.close(); if (streamInfo) streamInfo.server.close(); app.quit(); });
+  app.on('window-all-closed', () => {
+  // Op een Mac blijft een app leven als je het venster sluit; via het Dock open
+  // je hem weer (zie de activate-regel hierboven). De servertjes laten we dan
+  // ook staan, anders heeft dat nieuwe venster niets om mee te praten.
+  if (process.platform === 'darwin') return;
+  if (fetchController) fetchController.abort();
+  if (serverInfo) serverInfo.server.close();
+  if (streamInfo) streamInfo.server.close();
+  app.quit();
+});
 }

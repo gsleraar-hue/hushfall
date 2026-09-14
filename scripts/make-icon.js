@@ -89,6 +89,25 @@ sizes.forEach((s, i) => {
 fs.writeFileSync(path.join(ROOT, 'build', 'icon.ico'), Buffer.concat([header, ...dir, ...pngs]));
 fs.copyFileSync(path.join(ROOT, 'build', 'icon.png'), path.join(ROOT, 'public', 'icon.png'));
 
+// Het icoon voor macOS. Een .icns is net als een .ico een doos met plaatjes: vier letters als
+// typeaanduiding, dan de lengte, dan een PNG. Zo hoeven we ook hiervoor geen extra pakket.
+const ICNS = [['icp4', 16], ['icp5', 32], ['ic11', 32], ['ic12', 64], ['ic07', 128], ['ic13', 256], ['ic08', 256], ['ic14', 512], ['ic09', 512], ['ic10', 1024]];
+const gemaakt = new Map();
+const pngVan = (n) => { if (!gemaakt.has(n)) gemaakt.set(n, png(n, n, render(n))); return gemaakt.get(n); };
+const stukken = [];
+for (const [soort, maat] of ICNS) {
+  const beeld = pngVan(maat);
+  const kop = Buffer.alloc(8);
+  kop.write(soort, 0, 4, 'ascii');
+  kop.writeUInt32BE(beeld.length + 8, 4);
+  stukken.push(kop, beeld);
+}
+const icnsInhoud = Buffer.concat(stukken);
+const icnsKop = Buffer.alloc(8);
+icnsKop.write('icns', 0, 4, 'ascii');
+icnsKop.writeUInt32BE(icnsInhoud.length + 8, 4);
+fs.writeFileSync(path.join(ROOT, 'build', 'icon.icns'), Buffer.concat([icnsKop, icnsInhoud]));
+
 // Tegels voor de Microsoft Store. electron-builder pakt deze bestanden uit build/appx/ op; laat je ze
 // weg, dan zet hij zijn eigen algemene plaatjes in het pakket en staat er straks een vreemd icoon in
 // je Store-vermelding. De brede tegel is de enige die niet vierkant is.

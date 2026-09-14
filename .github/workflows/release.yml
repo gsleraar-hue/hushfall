@@ -25,9 +25,29 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+  # De Mac-versie. GitHub heeft Macs staan, dus een eigen Mac is niet nodig. De app wordt ad-hoc
+  # ondertekend (zie build/na-verpakken.js): gratis, en genoeg om te mogen starten op Apple Silicon.
+  # Een echte notarisatie vraagt een Apple-account van $99 per jaar; zonder dat geef je de eerste
+  # keer zelf toestemming via Systeeminstellingen > Privacy en beveiliging.
+  mac:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: node scripts/make-icon.js
+      - run: npx electron-builder --mac --publish always
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Zonder Apple-certificaat valt er niets te ondertekenen met een identiteit; we doen het
+          # zelf ad-hoc na het inpakken. Laat je dit weg, dan gaat electron-builder alsnog zoeken.
+          CSC_IDENTITY_AUTO_DISCOVERY: false
   # Het MSIX-pakket voor de Microsoft Store. Bewust een aparte taak: dit pakket werkt zichzelf niet
   # bij (dat doet de Store) en haalt geen geluiden op bij bronnen die commercieel gebruik verbieden.
-  # De runner van GitHub heeft de Windows SDK al staan, dus makeappx.exe is hier gewoon beschikbaar —
+  # De runner van GitHub heeft de Windows SDK al staan, dus makeappx.exe is hier gewoon beschikbaar â€”
   # op een gewone werkplek moet je die SDK eerst zelf installeren.
   store:
     runs-on: windows-latest
