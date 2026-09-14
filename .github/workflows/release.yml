@@ -47,7 +47,7 @@ jobs:
           CSC_IDENTITY_AUTO_DISCOVERY: false
   # Het MSIX-pakket voor de Microsoft Store. Bewust een aparte taak: dit pakket werkt zichzelf niet
   # bij (dat doet de Store) en haalt geen geluiden op bij bronnen die commercieel gebruik verbieden.
-  # De runner van GitHub heeft de Windows SDK al staan, dus makeappx.exe is hier gewoon beschikbaar Ã¢â‚¬â€
+  # De runner van GitHub heeft de Windows SDK al staan, dus makeappx.exe is daar beschikbaar;
   # op een gewone werkplek moet je die SDK eerst zelf installeren.
   store:
     runs-on: windows-latest
