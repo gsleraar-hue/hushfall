@@ -2,9 +2,9 @@
 // The keys (regen, onweer, ...) stay Dutch: they are identifiers used in library.json and in the
 // user's saved settings, so renaming them would break existing installations. Only labels change.
 window.HUSHFALL_DATA = {
-  // Per soort: drie kleuren voor de achtergrond (diep, midden, licht) plus een accentkleur waarmee
-  // de hele interface meekleurt, en het deeltjeseffect. Elke soort heeft een eigen deeltje, want
-  // acht soorten met hetzelfde stof zag je niet uit elkaar en bewoog nauwelijks.
+  // Per kind: three colours for the background (deep, middle, light) plus an accent colour the
+  // whole interface takes on, and the particle effect. Every kind has its own particle, because
+  // eight kinds with the same dust were impossible to tell apart and barely moved.
   kinds: {
     regen:   { colors: ['#0a1526', '#183a63', '#4f8fd6'], accent: '#7fc4f2', particles: 'rain' },
     onweer:  { colors: ['#08091a', '#221f4a', '#6f5fd0'], accent: '#a08bff', particles: 'storm' },

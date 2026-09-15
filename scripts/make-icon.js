@@ -1,5 +1,5 @@
-// Maakt build/icon.png (256x256), build/icon.ico en public/icon.png zonder externe pakketten:
-// een donker afgerond vierkant met een nevel van paars, koraal en blauw en een paar sterren.
+// Makes build/icon.png (256x256), build/icon.ico and public/icon.png without external packages:
+// a dark rounded square with a haze of purple, coral and blue, and a handful of stars.
 import fs from 'node:fs';
 import path from 'node:path';
 import zlib from 'node:zlib';
@@ -30,18 +30,18 @@ function png(w, h, rgba) {
   return Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), chunk('IHDR', ihdr), chunk('IDAT', zlib.deflateSync(raw, { level: 9 })), chunk('IEND', Buffer.alloc(0))]);
 }
 
-// Vaste sterren (x, y, straal in 256-pixels, sterkte) zodat elke grootte hetzelfde beeld geeft.
+// Fixed stars (x, y, radius in 256-pixels, strength) so every size gives the same picture.
 const STARS = [[0.23, 0.24, 1.6, 0.8], [0.77, 0.21, 1.2, 0.7], [0.84, 0.59, 1.8, 0.85], [0.17, 0.69, 1.3, 0.6], [0.66, 0.8, 1.5, 0.7], [0.38, 0.18, 1.0, 0.6], [0.32, 0.59, 1.4, 0.7], [0.46, 0.36, 1.2, 0.7], [0.55, 0.5, 3.2, 0.95]];
-const BLOBS = [ // cx, cy, rx, ry, hoek, kleur, sterkte
+const BLOBS = [ // cx, cy, rx, ry, angle, colour, strength
   [0.42, 0.5, 0.38, 0.28, -0.38, [157, 123, 255], 0.95],
   [0.62, 0.42, 0.3, 0.22, 0.31, [239, 139, 102], 0.85],
   [0.5, 0.66, 0.33, 0.18, 0, [108, 180, 255], 0.7],
 ];
 const towards = (col, c, a) => [col[0] + (c[0] - col[0]) * a, col[1] + (c[1] - col[1]) * a, col[2] + (c[2] - col[2]) * a];
 /**
- * Tekent het icoon. Standaard vierkant met afgeronde hoeken; geef je een aparte hoogte en `rond`
- * op false, dan komt er een rechthoek zonder hoeken uit. Dat is wat de brede tegel van de Microsoft
- * Store nodig heeft: die wordt al op een eigen ondergrond getekend en hoort het vlak te vullen.
+ * Draws the icon. A square with rounded corners by default; pass a separate height and `rond`
+ * as false and you get a rectangle without corners. That is what the wide tile of the Microsoft
+ * Store needs: it is drawn on a background of its own and is meant to fill the area.
  */
 function render(size, hoogte = size, rond = true) {
   const w = size, h = hoogte;
@@ -68,7 +68,7 @@ function render(size, hoogte = size, rond = true) {
       const dist = Math.hypot((u - sx) * w, (v - sy) * h) / scale;
       if (dist < sr + 1) col = towards(col, [244, 235, 221], so * Math.max(0, Math.min(1, sr + 0.5 - dist)));
     }
-    const bx = (u - 0.55) * 256, by = (v - 0.5) * 256; // kruisje bij de grote ster
+    const bx = (u - 0.55) * 256, by = (v - 0.5) * 256; // the cross by the big star
     if ((Math.abs(bx) < 0.7 && Math.abs(by) < 12) || (Math.abs(by) < 0.7 && Math.abs(bx) < 12)) col = towards(col, [244, 235, 221], 0.7 * (1 - Math.max(Math.abs(bx), Math.abs(by)) / 12));
     px[i] = Math.round(Math.max(0, Math.min(255, col[0]))); px[i + 1] = Math.round(Math.max(0, Math.min(255, col[1]))); px[i + 2] = Math.round(Math.max(0, Math.min(255, col[2]))); px[i + 3] = Math.round(alpha * 255);
   }
@@ -89,8 +89,8 @@ sizes.forEach((s, i) => {
 fs.writeFileSync(path.join(ROOT, 'build', 'icon.ico'), Buffer.concat([header, ...dir, ...pngs]));
 fs.copyFileSync(path.join(ROOT, 'build', 'icon.png'), path.join(ROOT, 'public', 'icon.png'));
 
-// Het icoon voor macOS. Een .icns is net als een .ico een doos met plaatjes: vier letters als
-// typeaanduiding, dan de lengte, dan een PNG. Zo hoeven we ook hiervoor geen extra pakket.
+// The icon for macOS. An .icns is a box of pictures just like an .ico: four letters as the type,
+// then the length, then a PNG. So this needs no extra package either.
 const ICNS = [['icp4', 16], ['icp5', 32], ['ic11', 32], ['ic12', 64], ['ic07', 128], ['ic13', 256], ['ic08', 256], ['ic14', 512], ['ic09', 512], ['ic10', 1024]];
 const gemaakt = new Map();
 const pngVan = (n) => { if (!gemaakt.has(n)) gemaakt.set(n, png(n, n, render(n))); return gemaakt.get(n); };
@@ -108,9 +108,9 @@ icnsKop.write('icns', 0, 4, 'ascii');
 icnsKop.writeUInt32BE(icnsInhoud.length + 8, 4);
 fs.writeFileSync(path.join(ROOT, 'build', 'icon.icns'), Buffer.concat([icnsKop, icnsInhoud]));
 
-// Tegels voor de Microsoft Store. electron-builder pakt deze bestanden uit build/appx/ op; laat je ze
-// weg, dan zet hij zijn eigen algemene plaatjes in het pakket en staat er straks een vreemd icoon in
-// je Store-vermelding. De brede tegel is de enige die niet vierkant is.
+// Tiles for the Microsoft Store. electron-builder picks these files up from build/appx/; leave them
+// out and it puts its own generic pictures in the package, leaving a strange icon in your Store
+// listing. The wide tile is the only one that is not square.
 const appx = path.join(ROOT, 'build', 'appx');
 fs.mkdirSync(appx, { recursive: true });
 const tegels = [

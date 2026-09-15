@@ -1,6 +1,6 @@
-// Windows-app: start de ingebouwde server op 127.0.0.1 en toont de app in een venster.
-// De geluidsbibliotheek staat in de gebruikersmap (AppData\Roaming\Hushfall\library) en kan
-// vanuit de app zelf worden gevuld ("Geluiden ophalen").
+// Windows app: starts the built-in server on 127.0.0.1 and shows the app in a window.
+// The sound library lives in the user folder (AppData\Roaming\Hushfall\library) and can be
+// filled from the app itself ("Geluiden ophalen" / fetch sounds).
 const { app, BrowserWindow, shell, Menu, nativeTheme, ipcMain, dialog } = require('electron');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
@@ -11,23 +11,23 @@ const { autoUpdater } = require('electron-updater');
 let win = null;
 let serverInfo = null;
 let fetchController = null;
-let hub = null;          // verdeelt de live MP3-stream
-let streamInfo = null;   // zender op het lokale netwerk (alleen als Sonos gebruikt wordt)
+let hub = null;          // hands out the live MP3 stream
+let streamInfo = null;   // station on the local network (only when Sonos is used)
 const STREAM_PORT = 34872;
-// Instellingen van de app (o.a. een zelfgekozen bibliotheekmap) in de gebruikersmap.
+// The app's settings (a library folder of your own, among others) in the user folder.
 const configPath = () => path.join(app.getPath('userData'), 'config.json');
 const readConfig = () => { try { return JSON.parse(fs.readFileSync(configPath(), 'utf8')); } catch { return {}; } };
 const writeConfig = (patch) => { const c = { ...readConfig(), ...patch }; fs.mkdirSync(app.getPath('userData'), { recursive: true }); fs.writeFileSync(configPath(), JSON.stringify(c, null, 2)); return c; };
-// Bibliotheekmap: zelf gekozen map, anders uitgepakt (npm start) public/ van het project en geïnstalleerd de gebruikersmap.
+// Library folder: a folder you picked yourself, else unpacked (npm start) the project's public/, and installed the user folder.
 const defaultLibraryDir = () => (app.isPackaged ? path.join(app.getPath('userData'), 'library') : path.join(__dirname, '..', 'public'));
 const libraryDir = () => { const c = readConfig().libraryDir; return c && fs.existsSync(c) ? c : defaultLibraryDir(); };
 
 /**
- * De app heette eerder Sfeer, Nebula en heel kort Thrum. De gebruikersmap hangt aan de naam van de app, dus na
- * het hernoemen wijst hij naar een lege map terwijl de bibliotheek — vaak vele gigabytes — nog in de
- * oude staat. Bij de eerste start nemen we die over. We verplaatsen niets: acht gigabyte verplaatsen
- * kan minuten duren en halverwege misgaan, dus we wijzen de oude map alleen aan in de instellingen,
- * waar de gebruiker hem ook zelf kan veranderen.
+ * This app used to be called Sfeer, then Nebula and very briefly Thrum. The user folder hangs off the app name, so after
+ * a rename it points at an empty folder while the library - often many gigabytes - still sits in the
+ * old one. On first start we adopt it. We move nothing: moving eight gigabytes
+ * can take minutes and fail halfway, so we only point at the old folder in the settings,
+ * where the user can change it themselves as well.
  */
 function erfOudeBibliotheek() {
   const c = readConfig();
@@ -36,10 +36,10 @@ function erfOudeBibliotheek() {
   const roaming = path.dirname(app.getPath('userData'));
   const heeftLib = (d) => { try { return !!d && fs.existsSync(path.join(d, 'library.json')); } catch { return false; } };
   for (const oud of ['Thrum', 'Nebula', 'Sfeer']) {
-    // Eerst de map die de gebruiker in de oude versie zelf had aangewezen: wie zijn bibliotheek
-    // ergens anders heeft neergezet, staat niet in de standaardmap. Pas daarna de standaardmap zelf.
+    // First the folder the user pointed at themselves in the old version: anyone who put their library
+    // somewhere else is not in the default folder. Only after that the default folder itself.
     let eigen = null;
-    try { eigen = JSON.parse(fs.readFileSync(path.join(roaming, oud, 'config.json'), 'utf8')).libraryDir; } catch { /* geen oude config */ }
+    try { eigen = JSON.parse(fs.readFileSync(path.join(roaming, oud, 'config.json'), 'utf8')).libraryDir; } catch { /* no old config */ }
     for (const kandidaat of [eigen, path.join(roaming, oud, 'library')]) {
       if (heeftLib(kandidaat)) { writeConfig({ libraryDir: kandidaat, oudeMapBekeken: true }); return; }
     }
@@ -50,14 +50,14 @@ function erfOudeBibliotheek() {
 async function createWindow() {
   if (!serverInfo) {
     if (app.isPackaged) erfOudeBibliotheek();
-    // De bibliotheek staat in de gebruikersmap (%APPDATA%\Hushfall\library) en hangt aan de naam van de
-    // app, niet aan het versienummer. Een nieuwe versie laat hem dus staan; de app schrijft er bij
-    // het opstarten nooit iets over. Alleen de map zelf wordt aangemaakt als hij nog niet bestaat.
+    // The library lives in the user folder (%APPDATA%\Hushfall\library) and hangs off the name of the
+    // app, not off the version number. So a new version leaves it alone; the app never writes over it
+    // at startup. Only the folder itself is created if it is not there yet.
     fs.mkdirSync(libraryDir(), { recursive: true });
     const { startServer, createStreamHub } = await import(pathToFileURL(path.join(__dirname, '..', 'server.js')).href);
     hub = createStreamHub();
-    // Een vaste poort: de pagina houdt dan dezelfde herkomst, zodat instellingen en de laatste mix
-    // (localStorage) bewaard blijven tussen sessies. Is de poort bezet, dan kiest het systeem er een.
+    // A fixed port: the page then keeps the same origin, so settings and the last mix
+    // (localStorage) survive between sessions. If the port is taken, the system picks another.
     try { serverInfo = await startServer({ port: 34871, host: '127.0.0.1', libraryDir, hub }); }
     catch { serverInfo = await startServer({ port: 0, host: '127.0.0.1', libraryDir, hub }); }
   }
@@ -75,7 +75,7 @@ async function createWindow() {
       preload: path.join(__dirname, 'preload.cjs'),
       contextIsolation: true,
       nodeIntegration: false,
-      backgroundThrottling: false, // geluid en animatie blijven lopen als het venster niet gefocust is
+      backgroundThrottling: false, // sound and animation keep running when the window is not focused
     },
   });
   Menu.setApplicationMenu(null);
@@ -90,7 +90,7 @@ async function createWindow() {
   win.on('closed', () => { win = null; });
 }
 
-// IPC: bibliotheek beheren vanuit de app
+// IPC: managing the library from the app
 ipcMain.handle('library:info', () => {
   const dir = libraryDir();
   try {
@@ -98,7 +98,7 @@ ipcMain.handle('library:info', () => {
     return { dir, isDefault: dir === defaultLibraryDir(), count: lib.sounds?.length || 0, bytes: (lib.sounds || []).reduce((a, s) => a + (s.bytes || 0), 0) };
   } catch { return { dir, isDefault: dir === defaultLibraryDir(), count: 0, bytes: 0 }; }
 });
-// Een bestaande bibliotheekmap kiezen (met library.json en sounds/), bijvoorbeeld de public-map van het project.
+// Pick an existing library folder (with library.json and sounds/), the project's public folder for instance.
 ipcMain.handle('library:chooseFolder', async () => {
   if (fetchController) return { error: 'A download is still running; stop it first.' };
   const r = await dialog.showOpenDialog(win, { title: 'Choose the folder containing library.json and sounds', properties: ['openDirectory'], defaultPath: libraryDir() });
@@ -111,11 +111,11 @@ ipcMain.handle('library:chooseFolder', async () => {
 });
 ipcMain.handle('library:resetFolder', () => { writeConfig({ libraryDir: null }); return { dir: libraryDir() }; });
 /**
- * Bronnen die de Store-versie mag ophalen. De BBC RemArc-licentie staat alleen persoonlijk,
- * educatief en niet-commercieel gebruik toe, en de gratis Mixkit-licenties verbieden herdistributie.
- * In een app die via de Microsoft Store wordt verspreid horen die er dus niet in. Wat overblijft is
- * Creative Commons en publiek domein, en dat is bovendien het eerlijke verhaal: het merendeel van
- * wat je hoort maakt de app zelf.
+ * Sources the Store version may fetch from. The BBC RemArc licence allows personal,
+ * educational and non-commercial use only, and the free Mixkit licences forbid redistribution.
+ * In an app handed out through the Microsoft Store those do not belong. What is left is
+ * Creative Commons and public domain, and that is the honest story anyway: most of
+ * what you hear is made by the app itself.
  */
 const STORE_BRONNEN = ['archive', 'music', 'jazz', 'kerst', 'gregoriaans', 'commons', 'freesound'];
 
@@ -133,14 +133,14 @@ ipcMain.handle('library:fetch', async (event, mode) => {
     });
     return result;
   } catch (e) {
-    return { error: e.message === 'Gestopt' ? 'stopped by the user' : e.message, added: 0 };
+    return { error: e.message === 'Stopped' ? 'stopped by the user' : e.message, added: 0 };
   } finally {
     fetchController = null;
   }
 });
-// ---- Sonos: spelers op het netwerk laten meeluisteren -------------------------------------------
+// ---- Sonos: let speakers on the network listen along ---------------------------------------------
 // De zender start pas als je hem echt gebruikt. Windows Firewall vraagt dan eenmalig om toestemming,
-// omdat de speaker de audio bij deze computer moet kunnen ophalen.
+// because the speaker has to be able to fetch the audio from this computer.
 async function ensureStreamServer() {
   if (streamInfo) return streamInfo;
   const { startStreamServer } = await import(pathToFileURL(path.join(__dirname, '..', 'server.js')).href);
@@ -153,7 +153,7 @@ ipcMain.handle('sonos:list', async () => {
   try { return { groups: await sonos.listGroups() }; }
   catch (e) { return { groups: [], error: e.message }; }
 });
-const spelend = new Set(); // groepen die onze zender spelen, om ze bij afsluiten netjes te stoppen
+const spelend = new Set(); // groups playing our station, to stop them politely on quit
 ipcMain.handle('sonos:play', async (e, host) => {
   try {
     await ensureStreamServer();
@@ -181,16 +181,16 @@ ipcMain.handle('library:stop', () => { if (fetchController) fetchController.abor
 ipcMain.handle('library:openFolder', () => shell.openPath(libraryDir()));
 
 /**
- * Bijwerken. De app kijkt kort na het starten of er een nieuwere versie op GitHub staat, haalt die
- * op de achtergrond binnen en installeert hem pas als je Hushfall afsluit. Zo hoef je nooit zelf te
- * de-installeren en onderbreekt het bijwerken nooit waar je naar aan het luisteren bent.
- * De gedownloade bibliotheek staat in de gebruikersmap en blijft dus staan.
+ * Updating. Shortly after starting, the app checks whether there is a newer version on GitHub, fetches
+ * it in the background and installs it only once you quit Hushfall. That way you never have to
+ * uninstall anything yourself and updating never interrupts whatever you are listening to.
+ * The downloaded library lives in the user folder and simply stays put.
  */
 function startBijwerken() {
   if (!app.isPackaged) return;                 // tijdens ontwikkelen is er niets om bij te werken
-  // Uit de Microsoft Store: daar werkt de Store zelf de app bij, en de installatiemap is alleen-lezen.
-  // Zelf bijwerken zou dus mislukken, en de Store keurt apps af die het toch proberen. Electron zet
-  // deze vlag zodra de app uit een MSIX-pakket draait, dus hier is geen aparte broncode voor nodig.
+  // From the Microsoft Store: there the Store updates the app, and the install folder is read-only.
+  // Updating ourselves would fail, and the Store rejects apps that try anyway. Electron sets
+  // this flag as soon as the app runs from an MSIX package, so no separate source code is needed here.
   if (process.windowsStore) return;
   autoUpdater.autoDownload = true;
   autoUpdater.autoInstallOnAppQuit = true;
@@ -198,15 +198,15 @@ function startBijwerken() {
   autoUpdater.on('update-available', (i) => melden('gevonden', { versie: i?.version }));
   autoUpdater.on('update-downloaded', (i) => melden('klaar', { versie: i?.version }));
   autoUpdater.on('download-progress', (p) => melden('bezig', { procent: Math.round(p?.percent || 0) }));
-  // Geen foutmelding aan de gebruiker: zonder internet of zonder release is dit geen probleem.
-  autoUpdater.on('error', (e) => console.warn('bijwerken mislukt:', e?.message || e));
+  // No error message for the user: without the internet or without a release this is not a problem.
+  autoUpdater.on('error', (e) => console.warn('update failed:', e?.message || e));
   setTimeout(() => autoUpdater.checkForUpdates().catch(() => {}), 8000); // eerst rustig opstarten
   setInterval(() => autoUpdater.checkForUpdates().catch(() => {}), 6 * 60 * 60 * 1000);
 }
-// Nu meteen herstarten en installeren, als de gebruiker daar in de app op klikt.
+// Restart and install right now, when the user clicks that in the app.
 ipcMain.handle('update:installeer', () => { autoUpdater.quitAndInstall(); });
 
-// Autoplay zonder gebruikersinteractie toestaan (voor herstel van de laatste sessie).
+// Allow autoplay without user interaction (to restore the last session).
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
 
 const gotLock = app.requestSingleInstanceLock();
@@ -216,18 +216,18 @@ if (!gotLock) {
   app.on('second-instance', () => { if (win) { if (win.isMinimized()) win.restore(); win.focus(); } });
   app.whenReady().then(createWindow).then(startBijwerken);
   app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
-  // Bij afsluiten de speakers stoppen, anders blijven ze een zender zoeken die er niet meer is.
+  // Stop the speakers on quit, otherwise they keep looking for a station that is gone.
   let afsluiten = false;
   app.on('before-quit', (e) => {
     if (afsluiten || !spelend.size) return;
     e.preventDefault(); afsluiten = true;
     Promise.allSettled([...spelend].map((h) => sonos.stop(h))).then(() => { spelend.clear(); app.quit(); });
-    setTimeout(() => app.exit(0), 2500); // niet blijven hangen als een speaker niet reageert
+    setTimeout(() => app.exit(0), 2500); // do not hang around when a speaker fails to answer
   });
   app.on('window-all-closed', () => {
-  // Op een Mac blijft een app leven als je het venster sluit; via het Dock open
-  // je hem weer (zie de activate-regel hierboven). De servertjes laten we dan
-  // ook staan, anders heeft dat nieuwe venster niets om mee te praten.
+  // On a Mac an app stays alive when you close the window; through the Dock you
+  // open it again (see the activate line above). So we leave the little servers
+  // running too, otherwise that new window has nothing to talk to.
   if (process.platform === 'darwin') return;
   if (fetchController) fetchController.abort();
   if (serverInfo) serverInfo.server.close();

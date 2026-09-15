@@ -1,18 +1,18 @@
-// Zet de audio van Hushfall in een aparte thread om naar MP3 en stuurt die naar de eigen server,
-// die het als radiozender aanbiedt aan Sonos. Zo blijft de UI en de audio zelf vloeiend lopen.
+// Turns Hushfall's audio into MP3 on a separate thread and sends it to our own server,
+// which offers it to Sonos as a radio station. That keeps the UI and the audio itself smooth.
 /* global lamejs */
 importScripts('lib/lame.min.js');
 
-const FRAME = 1152; // aantal samples per MP3-frame
+const FRAME = 1152; // samples per MP3 frame
 let enc = null;
 let left = new Int16Array(0), right = new Int16Array(0);
-let pending = [];        // gecodeerde stukjes die nog verstuurd moeten worden
+let pending = [];        // encoded chunks still waiting to be sent
 let bytesSent = 0, sending = false, stopped = false, pushUrl = '/stream/push';
 
 const f2i = (f) => { const n = f.length, out = new Int16Array(n); for (let i = 0; i < n; i++) { const v = Math.max(-1, Math.min(1, f[i])); out[i] = v < 0 ? v * 32768 : v * 32767; } return out; };
 const concat = (a, b) => { const out = new Int16Array(a.length + b.length); out.set(a); out.set(b, a.length); return out; };
 
-/** Verstuurt wat er klaarstaat in één POST; bij een fout houdt hij het even vast en probeert opnieuw. */
+/** Sends whatever is ready in one POST; on a failure it holds on to it and tries again. */
 async function flushToServer() {
   if (sending || !pending.length || stopped) return;
   sending = true;
@@ -45,7 +45,7 @@ self.onmessage = (e) => {
       left = left.slice(FRAME); right = right.slice(FRAME);
       if (buf.length) pending.push(new Uint8Array(buf));
     }
-    if (pending.length >= 4) flushToServer(); // ongeveer 5 keer per seconde versturen
+    if (pending.length >= 4) flushToServer(); // send roughly five times a second
     return;
   }
   if (m.type === 'stop' && enc) {

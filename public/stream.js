@@ -1,5 +1,5 @@
-// Zet Hushfall om in een radiozender voor het eigen netwerk: de gemengde audio wordt live naar MP3
-// omgezet en naar de ingebouwde server gestuurd, waar een Sonos hem ophaalt.
+// Turns Hushfall into a radio station for your own network: the mixed audio is converted to MP3
+// live and sent to the built-in server, where a Sonos picks it up.
 (function () {
   class Stream {
     constructor(engine) {
@@ -11,18 +11,18 @@
     on(fn) { this.listeners.add(fn); return () => this.listeners.delete(fn); }
     emit(type, data) { for (const fn of this.listeners) fn(type, data); }
 
-    /** Begint met uitzenden. Vanaf hier loopt de audio ook door als er lokaal niets speelt. */
+    /** Starts broadcasting. From here on the audio keeps running even when nothing plays locally. */
     async start() {
       if (this.active) return true;
       const ctx = this.engine.ensure();
       try {
-        if (!ctx.audioWorklet) throw new Error('AudioWorklet niet beschikbaar');
+        if (!ctx.audioWorklet) throw new Error('AudioWorklet not available');
         if (!this._workletLoaded) { await ctx.audioWorklet.addModule('tap-processor.js'); this._workletLoaded = true; }
         this.tap = new AudioWorkletNode(ctx, 'hushfall-tap', { numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [2], processorOptions: { blockSize: 4096 } });
-        // Aftakken ná de timer (uitfaden werkt dus ook op de Sonos) en vóór het hoofdvolume en dempen,
-        // zodat het volume van je pc de uitzending niet stiller maakt.
+        // Branch off after the timer (so fading out works on the Sonos too) and before the master
+        // volume and mute, so the volume of your pc does not quieten the broadcast.
         this.engine.tapPoint.connect(this.tap);
-        // Een worklet levert alleen blokken zolang hij ergens naartoe gaat: naar een stille uitgang.
+        // A worklet only delivers blocks while it goes somewhere: into a silent output.
         this.silent = ctx.createGain(); this.silent.gain.value = 0;
         this.tap.connect(this.silent).connect(ctx.destination);
 

@@ -2,24 +2,24 @@
 /**
  * Haalt gratis ambient geluiden op uit meerdere bronnen en sorteert ze op soort en sfeer.
  *
- * Bronnen (geen API-sleutel nodig):
- *   - BBC Sound Effects (RemArc-licentie: persoonlijk, educatief, niet-commercieel)
+ * Sources (no API key needed):
+ *   - BBC Sound Effects (RemArc licence: personal, educational, non-commercial)
  *   - Internet Archive: veldopnames en ambient netlabel-muziek (Creative Commons)
  *   - Wikimedia Commons (Creative Commons / publiek domein)
  *   - Mixkit (Mixkit Sound Effects Free License)
- * Optioneel met sleutel in .env:
+ * Optionally with a key in .env:
  *   - Freesound (FREESOUND_KEY): Creative Commons-geluiden
  *
- * Werkwijze: eerst worden bij alle bronnen kandidaten verzameld (alleen metadata), daarna wordt
- * gebalanceerd gedownload: om de beurt per soort (regen, zee, vuur, ...) en per bron, langste
- * opnames eerst, tot de limiet bereikt is. Zo krijgt elke sfeer een eerlijk deel.
+ * How it works: candidates are gathered at every source first (metadata only), after which the
+ * downloading is balanced: taking turns per kind (rain, sea, fire, ...) and per source, longest
+ * recordings first, up to the limit. That way every mood gets a fair share.
  *
  * Gebruik:  node scripts/fetch-sounds.js [--all] [--max-gb=8] [--dir=map] [--only=bbc,mixkit,archive,music,jazz,kerst,commons,freesound] [--drop=muziek] [--dry] [--retitle]
- *   --all        alles ophalen wat ambient is (pagineert door alle zoekresultaten); standaard is een snelle selectie (~500 MB)
- *   --max-gb=N   schijflimiet voor de hele bibliotheek (standaard 8 GB bij --all, 0,5 GB bij snel)
- *   --dir=map    map met sounds/ en library.json (standaard public/)
- *   --only=...   alleen deze bronnen
- *   --dry        niets downloaden, alleen tonen wat er gevonden wordt
+ *   --all        fetch everything ambient (pages through all search results); the default is a quick selection (~500 MB)
+ *   --max-gb=N   disk limit for the whole library (8 GB by default with --all, 0.5 GB when quick)
+ *   --dir=folder folder holding sounds/ and library.json (public/ by default)
+ *   --only=...   these sources only
+ *   --dry        download nothing, only show what is found
  *
  * Kan ook als module gebruikt worden: runFetch({ dir, mode: 'all', log, progress, signal }).
  */
@@ -83,7 +83,7 @@ const KIND_MOODS = {
   kerst: ['feest'],
   gregoriaans: ['focus', 'ontspanning', 'cinematisch', 'muziek'],
 };
-// Alles wat geen rustige achtergrond is (spraak, effecten, harde geluiden) wordt overgeslagen.
+// Anything that is not a calm background (speech, effects, harsh sounds) is skipped.
 const EXCLUDE = /\b(speech|speaking|speaks?|interview|lecture|lyrics|podcast|sermon|poem|reading|narrat\w*|dialogue|comedy|laugh\w*|scream\w*|gunshots?|guns?|rifle|pistol|explosions?|war|battle|sirens?|alarm|crash\w*|horror|jingle|advert\w*|commercial|announcement|phone|telephone|ringtone|beep|notification|clapping|applause|cheering|shouting|shouts?|crying|toilet|fart|burp|vomit|whistle|footsteps|door|doors|slam|glass|smash|breaking|hit|hits|punch|knock\w*|coins?|keys|zip|click|buttons?|switch|bang|shot|impact|swoosh|whoosh|sword|monster|roar\w*|growl\w*|shriek|squeal|honk\w*|horn|brakes|skid|revving|motorbike|motorcycle|chainsaw|drill\w*|hammer\w*|sawing|jackhammer|scratch\w*|squeak\w*|creak\w*|scrape|ripping|tearing|cough\w*|sneez\w*|snor\w*|breath\w*|heartbeat|eating|chewing|slurp|kiss|moan|yawn|tv|television|radio play|game show|orbit|nasa|documentary|news|trailer|episode|lesson|tutorial)\b/i;
 
 export function classify(text, forcedKind) {
@@ -109,8 +109,8 @@ function parseLength(v) {
 }
 
 /**
- * Maakt van een ruwe titel (vaak een bestandsnaam) een leesbare titel. Geeft '' terug als er
- * niets zinnigs overblijft; de aanroeper valt dan terug op de soort.
+ * Turns a raw title (often a file name) into a readable one. Returns '' when nothing
+ * sensible is left; the caller then falls back to the kind.
  */
 export function prettyTitle(raw) {
   let t = String(raw || '');
@@ -130,10 +130,10 @@ export function prettyTitle(raw) {
   t = t.replace(/\b(?:cyc|rest|pcr|slc|vkrsnl|dwk|mixg|puls|s27|fd|ca|ar)\b/g, ' '); // losse labelcodes
   t = t.replace(/\(\s*[A-Za-z]{1,6}[-\s]?\d{1,4}[a-z]?\s*\)/g, ' '); // (AR88), (PCR018)
   t = t.replace(/\((?:restored|remastered|mono|stereo|live|album version|original mix)\)/gi, ' ');
-  t = t.replace(/(?<!\bM)([a-z])(?=[A-Z][a-z])/g, '$1 ').replace(/\b([A-Z])(?=[A-Z][a-z])/g, '$1 '); // CamelCase -> losse woorden (niet McMaster)
-  t = t.replace(/\b([A-Za-z]{2,12})\d{1,6}[A-Za-z]{0,2}\b/g, (m, w) => (/^(?:mp|dj|mc|ep|lp|cd|b|u)$/i.test(w) ? m : w)); // nog eens, na het splitsen van CamelCase (kosmo066EpDarsick)
+  t = t.replace(/(?<!\bM)([a-z])(?=[A-Z][a-z])/g, '$1 ').replace(/\b([A-Z])(?=[A-Z][a-z])/g, '$1 '); // CamelCase -> separate words (not McMaster)
+  t = t.replace(/\b([A-Za-z]{2,12})\d{1,6}[A-Za-z]{0,2}\b/g, (m, w) => (/^(?:mp|dj|mc|ep|lp|cd|b|u)$/i.test(w) ? m : w)); // again, after splitting CamelCase (kosmo066EpDarsick)
   t = t.replace(/\b\d{1,2}(?:[.:]\d{2})?\s?(?:am|pm)\b/gi, ' '); // tijden: 9.30am, 5am
-  t = t.replace(/\bv\d+\b/gi, ' ').replace(/\bvol\.?\s*$/i, ''); // v2, "Vol." aan het eind
+  t = t.replace(/\bv\d+\b/gi, ' ').replace(/\bvol\.?\s*$/i, ''); // v2, "Vol." at the end
   t = t.replace(/\b\d{1,2}(?=[A-Z][a-z])/g, ''); // 1Teleport
   t = t.replace(/^(?:[A-Z][A-Z/]{2,}(?:\s+[A-Z][A-Z/]{2,})*\s*[:.]?\s*)+(?=[A-Z][a-z]|With\b)/, ''); // BBC-labels: "SUMMER: EARLY MORNING. With ..."
   t = t.replace(/^With\s+/, '');
@@ -156,7 +156,7 @@ export function prettyTitle(raw) {
   t = t.replace(/\b(?:royalty[- ]free|no copyright|copyright free|free download|download|hq|hd|4k|1080p|asmr|\d+\s*(?:hours?|hrs?|h|minutes?|mins?|min))\b/gi, ' ');
   t = t.replace(/\s*[-–—:|]\s*(?:various(?: artists?)?|unknown(?: artist)?|onbekend|v\.?a\.?|untitled)\s*$/i, '');
   t = t.replace(/^\s*(?:untitled|track|audio|sound|recording|file)\s*$/i, '');
-  t = t.replace(/(?<![#\w])\d{1,3}(?![\w%'"])/g, ' '); // losse nummers (niet #2, 10%, 3'10")
+  t = t.replace(/(?<![#\w])\d{1,3}(?![\w%'"])/g, ' '); // loose numbers (not #2, 10%, 3'10")
   if (/;/.test(t)) { // "A - Part 1; A - Part 2; B" -> unieke delen
     const parts = t.split(/\s*;\s*/).map((p) => p.replace(/\s*[-–]+\s*$/, '').trim()).filter(Boolean);
     t = parts.filter((p, i) => parts.findIndex((o) => o.toLowerCase() === p.toLowerCase()) === i).join(', ');
@@ -167,7 +167,7 @@ export function prettyTitle(raw) {
   t = t.replace(/^\s*[-–—:|,;./]+\s*/, '').replace(/\s*[-–—:|,;./]+\s*$/, '').replace(/\s{2,}/g, ' ').trim(); // restjes vooraan en achteraan
   t = t.replace(/[-–—:|,;./]+\s*$/g, '').replace(/^\s*[-–—:|,;./]+/g, '');
   t = t.replace(/\s+([,.;:])/g, '$1').replace(/\s{2,}/g, ' ').trim();
-  // Lange beschrijvingen (BBC): eerste zinnige zin, geen losse labels als "Day." of "Weather:"
+  // Long descriptions (BBC): the first sensible sentence, no loose labels like "Day." or "Weather:"
   if (t.length > 70) {
     const parts = t.split(/(?<=[.!?])\s+|:\s+/).map((p) => p.trim()).filter(Boolean);
     const good = parts.filter((p) => p.split(/\s+/).length >= 3 && !/^(?:day|night|dawn|dusk|weather|interior|exterior|atmosphere|int|ext)\b/i.test(p));
@@ -183,14 +183,14 @@ export function prettyTitle(raw) {
   return t.charAt(0).toUpperCase() + t.slice(1);
 }
 const NO_ARTIST = /^(?:various(?:\s+artists?)?|unknown(?:\s+artist)?|onbekend|v\.?a\.?|vvaa|untitled|anonymous)$/i;
-/** Titel voor een bibliotheek-item: opgeschoond, met terugval op soort + bron. */
+/** Title for a library item: cleaned up, falling back to kind + source. */
 export function displayTitle(entry) {
   if (entry.kind === 'muziek' || entry.kind === 'jazz' || entry.kind === 'kerst') {
     const parts = String(entry.rawTitle || entry.title).split(/\s+–\s+/);
     const artistRaw = parts.length > 1 ? parts.pop() : '';
     let a = prettyTitle(artistRaw); if (NO_ARTIST.test(a)) a = '';
     let n = prettyTitle(parts.join(' – '));
-    if (a && n.toLowerCase().startsWith(a.toLowerCase() + ' ')) n = n.slice(a.length).replace(/^[\s–-]+/, ''); // artiest niet dubbel
+    if (a && n.toLowerCase().startsWith(a.toLowerCase() + ' ')) n = n.slice(a.length).replace(/^[\s–-]+/, ''); // no doubled artist
     if (a && n.toLowerCase().startsWith(a.toLowerCase())) n = prettyTitle(n.slice(a.length)) || n;
     n = n || prettyTitle(entry.tags?.[1]) || KIND_LABELS[entry.kind];
     if (a && n.toLowerCase() === a.toLowerCase()) a = '';
@@ -204,7 +204,7 @@ export function displayTitle(entry) {
       const junk = (p) => /^\S{11,}$/.test(p) || (/\d/.test(p) && !/\s/.test(p)) || NO_ARTIST.test(p) || /^various artists\b/i.test(p);
       const kept = parts.filter((p) => !junk(p));
       if (kept.length) parts = kept;
-      // latere delen die grotendeels het eerste deel herhalen ("Album – Album track 3") weglaten
+      // drop later parts that largely repeat the first one ("Album – Album track 3")
       const words = (p) => new Set(p.toLowerCase().split(/[^a-z0-9à-ÿ]+/).filter((w) => w.length > 2));
       const w0 = words(parts[0]);
       parts = parts.filter((p, i) => {
@@ -249,7 +249,7 @@ function licenseLabel(url) {
 
 class Fetcher {
   constructor(signal) { this.signal = signal; }
-  check() { if (this.signal?.aborted) throw new Error('Gestopt'); }
+  check() { if (this.signal?.aborted) throw new Error('Stopped'); }
   async json(url, opts = {}, attempt = 0) {
     this.check();
     const res = await fetch(url, { ...opts, headers: { 'User-Agent': UA, Accept: 'application/json', ...(opts.headers || {}) }, signal: AbortSignal.any([AbortSignal.timeout(45000), this.signal].filter(Boolean)) });
@@ -309,7 +309,7 @@ async function collectBBC(f, mode, log) {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ criteria: { from, size: pageSize, query: q } }),
         });
-      } catch (e) { if (e.message === 'Gestopt') throw e; log(`  ! BBC "${q}": ${e.message}`); break; }
+      } catch (e) { if (e.message === 'Stopped') throw e; log(`  ! BBC "${q}": ${e.message}`); break; }
       total = data.total || 0;
       got.push(...(data.results || []));
       from += pageSize;
@@ -330,7 +330,7 @@ async function collectBBC(f, mode, log) {
         sourceUrl: `https://sound-effects.bbcrewind.co.uk/search?q=${r.id}`, tags: r.tags || [],
       });
     }
-    log(`BBC "${q}": ${got.length} resultaten, ${cands.length} kandidaten`);
+    log(`BBC "${q}": ${got.length} results, ${cands.length} candidates`);
     await sleep(200);
   }
   return out;
@@ -344,7 +344,7 @@ async function collectMixkit(f, mode, log) {
     const maxPages = mode === 'all' ? 12 : 1;
     for (let page = 1; page <= maxPages; page++) {
       let html;
-      try { html = await f.text(`https://mixkit.co/free-sound-effects/${cat}/${page > 1 ? `?page=${page}` : ''}`); } catch (e) { if (e.message === 'Gestopt') throw e; if (page === 1) log(`  ! Mixkit ${cat}: ${e.message}`); break; }
+      try { html = await f.text(`https://mixkit.co/free-sound-effects/${cat}/${page > 1 ? `?page=${page}` : ''}`); } catch (e) { if (e.message === 'Stopped') throw e; if (page === 1) log(`  ! Mixkit ${cat}: ${e.message}`); break; }
       const re = /data-audio-player-preview-url-value="([^"]+)"[\s\S]*?data-audio-player-item-id-value="(\d+)"[\s\S]*?item-grid-card__title"[^>]*>\s*([^<]+?)\s*<[\s\S]*?data-test-id="duration">\s*([\d:]+)\s*</g;
       let m; let n = 0;
       while ((m = re.exec(html))) {
@@ -365,13 +365,13 @@ async function collectMixkit(f, mode, log) {
         license: 'Mixkit Sound Effects Free License', author: 'Mixkit', sourceUrl: `https://mixkit.co/free-sound-effects/${cat}/`, tags: [cat],
       });
     }
-    log(`Mixkit ${cat}: ${items.length} gevonden, ${picked.length} kandidaten`);
+    log(`Mixkit ${cat}: ${items.length} found, ${picked.length} candidates`);
     await sleep(200);
   }
   return out;
 }
 
-// Mixkit stock music: volledige mp3's, per genre naar een soort.
+// Mixkit stock music: full mp3s, per genre into a kind.
 const MIXKIT_MUSIC = {
   muziek: ['ambient', 'atmospheres', 'chillout', 'downtempo', 'drone-music', 'new-age', 'minimalism', 'easy-listening', 'underscore', 'dream-pop', 'classical'],
   jazz: ['jazz', 'nu-jazz', 'acid-jazz', 'jazz-blues', 'jazz-funk', 'swing', 'bossa-nova', 'lounge', 'lo-fi-beats', 'kitsch-lounge'],
@@ -385,7 +385,7 @@ async function collectMixkitMusic(f, mode, log) {
     let n = 0;
     for (let page = 1; page <= (mode === 'all' ? 6 : 1); page++) {
       let html;
-      try { html = await f.text(`${base}${page > 1 ? `?page=${page}` : ''}`); } catch (e) { if (e.message === 'Gestopt') throw e; if (page === 1) log(`  ! Mixkit muziek ${cat}: ${e.message}`); break; }
+      try { html = await f.text(`${base}${page > 1 ? `?page=${page}` : ''}`); } catch (e) { if (e.message === 'Stopped') throw e; if (page === 1) log(`  ! Mixkit muziek ${cat}: ${e.message}`); break; }
       const re = /data-audio-player-preview-url-value="([^"]+)"[\s\S]*?data-audio-player-item-id-value="(\d+)"[\s\S]*?item-grid-card__title"[^>]*>\s*([^<]+?)\s*<[\s\S]*?(?:item-grid-music-preview__author"[^>]*>\s*(?:by\s+)?([^<]+?)\s*<[\s\S]*?)?data-test-id="duration">\s*([\d:]+)\s*</g;
       let m; let found = 0;
       while ((m = re.exec(html))) {
@@ -403,7 +403,7 @@ async function collectMixkitMusic(f, mode, log) {
       if (!found || !html.includes(`?page=${page + 1}"`)) break;
       await sleep(300);
     }
-    log(`Mixkit muziek ${cat}: ${n} kandidaten`);
+    log(`Mixkit muziek ${cat}: ${n} candidates`);
     await sleep(200);
   }
   return out;
@@ -415,20 +415,20 @@ async function archiveFiles(f, identifier) {
   const files = (meta.files || []).filter((x) => /mp3/i.test(x.format || '') || /\.mp3$/i.test(x.name) || /ogg/i.test(x.format || ''));
   return { meta: meta.metadata || {}, files };
 }
-/** Voert fn uit over items met maximaal n tegelijk. */
+/** Runs fn over items with at most n at a time. */
 async function pool(items, n, fn) {
   let i = 0;
   await Promise.all(Array.from({ length: Math.min(n, items.length) }, async () => { while (i < items.length) await fn(items[i++]); }));
 }
 async function collectArchive(f, mode, log, maxFile) {
   const out = []; const seen = new Set();
-  // Vier zoekopdrachten tegelijk: de metadata-aanroepen per item zijn traag.
+  // Four searches at a time: the metadata calls per item are slow.
   await pool(ARCHIVE_QUERIES, 4, async (q) => {
     const query = `(subject:("field recording" OR soundscape OR ambient OR "nature sounds" OR "ambient sounds") AND mediatype:audio AND title:(${q}))`;
     let data;
     try {
       data = await f.json(`https://archive.org/advancedsearch.php?q=${encodeURIComponent(query)}&fl[]=identifier&fl[]=title&fl[]=licenseurl&fl[]=creator&fl[]=description&sort[]=downloads+desc&rows=${mode === 'all' ? 60 : 12}&output=json`);
-    } catch (e) { if (e.message === 'Gestopt') throw e; log(`  ! Archive "${q}": ${e.message}`); return; }
+    } catch (e) { if (e.message === 'Stopped') throw e; log(`  ! Archive "${q}": ${e.message}`); return; }
     const docs = (data.response?.docs || []).filter((d) => d.licenseurl && !seen.has(d.identifier));
     let taken = 0;
     for (const d of docs) {
@@ -436,7 +436,7 @@ async function collectArchive(f, mode, log, maxFile) {
       if (seen.has(d.identifier)) continue;
       seen.add(d.identifier);
       let info;
-      try { info = await archiveFiles(f, d.identifier); } catch (e) { if (e.message === 'Gestopt') throw e; continue; }
+      try { info = await archiveFiles(f, d.identifier); } catch (e) { if (e.message === 'Stopped') throw e; continue; }
       const files = info.files
         .map((x) => ({ x, sec: parseLength(x.length), bytes: Number(x.size || 0) }))
         .filter((x) => x.bytes > 0 && x.bytes <= maxFile && x.sec >= 60)
@@ -454,11 +454,11 @@ async function collectArchive(f, mode, log, maxFile) {
       }
       await sleep(150);
     }
-    log(`Archive "${q}": ${docs.length} items, ${taken} kandidaten`);
+    log(`Archive "${q}": ${docs.length} items, ${taken} candidates`);
   });
   return out;
 }
-/** Netlabel-albums op Internet Archive: per album de beste mp3-tracks. */
+/** Netlabel albums on the Internet Archive: the best mp3 tracks per album. */
 async function collectNetlabels(f, mode, log, maxFile, { query, kind, rows, perAlbum, minSec = 120, maxSec = 900, excludeTitle = /$^/ }) {
   const out = [];
   let data;
@@ -468,7 +468,7 @@ async function collectNetlabels(f, mode, log, maxFile, { query, kind, rows, perA
   const docs = (data.response?.docs || []).filter((d) => d.licenseurl && !excludeTitle.test(`${first(d.title)} ${joinArr(d.subject)}`));
   for (const d of docs) {
     let info;
-    try { info = await archiveFiles(f, d.identifier); } catch (e) { if (e.message === 'Gestopt') throw e; continue; }
+    try { info = await archiveFiles(f, d.identifier); } catch (e) { if (e.message === 'Stopped') throw e; continue; }
     const seen = new Set();
     const tracks = info.files
       .filter((x) => /\.mp3$/i.test(x.name)) // mp3 boven ogg van dezelfde track
@@ -506,13 +506,13 @@ async function collect78(f, mode, log, maxFile, { subject, kind, rows }) {
   let data;
   try {
     data = await f.json(`https://archive.org/advancedsearch.php?q=${encodeURIComponent(query)}&fl[]=identifier&fl[]=title&fl[]=creator&fl[]=date&sort[]=downloads+desc&rows=${rows}&output=json`);
-  } catch (e) { log(`  ! 78 toeren (${kind}): ${e.message}`); return out; }
+  } catch (e) { log(`  ! 78 rpm (${kind}): ${e.message}`); return out; }
   const docs = data.response?.docs || [];
   for (const d of docs) {
     const title = clean(first(d.title));
     if (/\b(speech|talk|comedy|monologue|sermon|poem|story|reading)\b/i.test(title)) continue;
     let info;
-    try { info = await archiveFiles(f, d.identifier); } catch (e) { if (e.message === 'Gestopt') throw e; continue; }
+    try { info = await archiveFiles(f, d.identifier); } catch (e) { if (e.message === 'Stopped') throw e; continue; }
     const file = info.files
       .filter((x) => /\.mp3$/i.test(x.name))
       .map((x) => ({ x, sec: parseLength(x.length), bytes: Number(x.size || 0) }))
@@ -528,7 +528,7 @@ async function collect78(f, mode, log, maxFile, { subject, kind, rows }) {
     });
     await sleep(200);
   }
-  log(`78 toeren (${KIND_LABELS[kind]}): ${docs.length} platen, ${out.length} kandidaten`);
+  log(`78 rpm (${KIND_LABELS[kind]}): ${docs.length} records, ${out.length} candidates`);
   return out;
 }
 async function collectJazz(f, mode, log, maxFile) {
@@ -565,14 +565,14 @@ async function collectCommons(f, mode, log, maxFile) {
     let data;
     try {
       data = await f.json(`https://commons.wikimedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent('filetype:audio ' + q)}&srnamespace=6&srlimit=${mode === 'all' ? 50 : 15}&format=json`);
-    } catch (e) { if (e.message === 'Gestopt') throw e; log(`  ! Commons "${q}": ${e.message}`); continue; }
+    } catch (e) { if (e.message === 'Stopped') throw e; log(`  ! Commons "${q}": ${e.message}`); continue; }
     const titles = (data.query?.search || []).map((s) => s.title).filter((t) => /\.(ogg|oga|mp3)$/i.test(t));
     let n = 0;
     for (let i = 0; i < titles.length; i += 20) {
       let info;
       try {
         info = await f.json(`https://commons.wikimedia.org/w/api.php?action=query&prop=imageinfo&iiprop=url|size|mime|extmetadata&titles=${encodeURIComponent(titles.slice(i, i + 20).join('|'))}&format=json`);
-      } catch (e) { if (e.message === 'Gestopt') throw e; continue; }
+      } catch (e) { if (e.message === 'Stopped') throw e; continue; }
       for (const p of Object.values(info.query?.pages || {})) {
         const ii = p.imageinfo?.[0]; if (!ii || seen.has(p.pageid)) continue;
         const m = ii.extmetadata || {}; const mime = ii.mime || '';
@@ -589,7 +589,7 @@ async function collectCommons(f, mode, log, maxFile) {
       }
       await sleep(900);
     }
-    log(`Commons "${q}": ${titles.length} bestanden, ${n} kandidaten`);
+    log(`Commons "${q}": ${titles.length} files, ${n} candidates`);
   }
   return out;
 }
@@ -597,14 +597,14 @@ async function collectCommons(f, mode, log, maxFile) {
 const FREESOUND_QUERIES = ['rain ambience', 'thunderstorm', 'wind ambience', 'ocean waves', 'river stream', 'fireplace', 'forest birds', 'night crickets', 'city ambience', 'cafe ambience', 'library ambience', 'snow wind', 'jungle ambience', 'fountain', 'drone ambient', 'field recording', 'soundscape', 'nature ambience'];
 async function collectFreesound(f, mode, log) {
   const key = process.env.FREESOUND_KEY;
-  if (!key) { log('Freesound overgeslagen (geen FREESOUND_KEY in .env)'); return []; }
+  if (!key) { log('Freesound skipped (no FREESOUND_KEY in .env)'); return []; }
   const out = []; const seen = new Set();
   for (const q of FREESOUND_QUERIES) {
     for (let page = 1; page <= (mode === 'all' ? 4 : 1); page++) {
       let data;
       try {
         data = await f.json(`https://freesound.org/apiv2/search/text/?query=${encodeURIComponent(q)}&filter=${encodeURIComponent('duration:[60 TO 900] license:("Creative Commons 0" OR "Attribution")')}&fields=id,name,previews,license,username,duration,tags,url&sort=rating_desc&page_size=${mode === 'all' ? 50 : 6}&page=${page}&token=${key}`);
-      } catch (e) { if (e.message === 'Gestopt') throw e; log(`  ! Freesound "${q}": ${e.message}`); break; }
+      } catch (e) { if (e.message === 'Stopped') throw e; log(`  ! Freesound "${q}": ${e.message}`); break; }
       for (const r of data.results || []) {
         if (seen.has(r.id)) continue; seen.add(r.id);
         out.push({
@@ -616,7 +616,7 @@ async function collectFreesound(f, mode, log) {
       await sleep(300);
     }
   }
-  log(`Freesound: ${out.length} kandidaten`);
+  log(`Freesound: ${out.length} candidates`);
   return out;
 }
 
@@ -661,23 +661,23 @@ export async function runFetch(opts = {}) {
   const known = new Map(lib.sounds.map((s) => [s.id, s]));
   let totalBytes = lib.sounds.reduce((a, s) => a + (s.bytes || 0), 0);
   const perSourceQuick = { bbc: 170 * MB, mixkit: 70 * MB, archive: 80 * MB, music: 120 * MB, archive78: 100 * MB, mixkitmusic: 120 * MB, commons: 60 * MB, freesound: 80 * MB, gregoriaans: 80 * MB };
-  if (opts.drop?.length) { // soorten weggooien (bijvoorbeeld om muziek opnieuw en strenger op te halen)
+  if (opts.drop?.length) { // throw kinds away (to fetch music again, more strictly, for instance)
     const dropped = lib.sounds.filter((s) => opts.drop.includes(s.kind));
     for (const s of dropped) { try { fs.unlinkSync(path.join(dir, s.file)); } catch {} }
     lib.sounds = lib.sounds.filter((s) => !opts.drop.includes(s.kind));
     for (const s of dropped) known.delete(s.id);
     totalBytes = lib.sounds.reduce((a, s) => a + (s.bytes || 0), 0);
     saveLibrary(dir, lib);
-    log(`${dropped.length} geluiden van soort ${opts.drop.join(', ')} verwijderd.`);
+    log(`${dropped.length} sounds of kind ${opts.drop.join(', ')} removed.`);
   }
   const usedPerSource = {};
   for (const s of lib.sounds) usedPerSource[s.source] = (usedPerSource[s.source] || 0) + (s.bytes || 0);
   const enabled = (s) => !only || only.includes(s);
 
-  log(`Hushfall: geluiden ophalen (${mode === 'all' ? 'alles' : 'snelle selectie'}${dry ? ', dry run' : ''}). Bibliotheek: ${lib.sounds.length} geluiden, ${(totalBytes / MB).toFixed(0)} MB. Limiet ${(maxBytes / 1024 / MB).toFixed(1)} GB.`);
+  log(`Hushfall: fetching sounds (${mode === 'all' ? 'everything' : 'quick selection'}${dry ? ', dry run' : ''}). Library: ${lib.sounds.length} sounds, ${(totalBytes / MB).toFixed(0)} MB. Limit ${(maxBytes / 1024 / MB).toFixed(1)} GB.`);
   progress({ phase: 'zoeken', done: 0, total: 0, added: 0, count: lib.sounds.length, bytes: totalBytes });
 
-  // Fase 1: kandidaten verzamelen
+  // Fase 1: candidates verzamelen
   const collectors = [
     ['bbc', () => collectBBC(f, mode, log)], ['mixkit', () => collectMixkit(f, mode, log)], ['archive', () => collectArchive(f, mode, log, maxFile)],
     ['music', () => collectMusic(f, mode, log, maxFile)], ['jazz', () => collectJazz(f, mode, log, maxFile)], ['kerst', () => collectKerst(f, mode, log, maxFile)],
@@ -690,11 +690,11 @@ export async function runFetch(opts = {}) {
   const active = collectors.filter(([name]) => enabled(name));
   let sourcesDone = 0;
   const report = () => progress({ phase: 'zoeken', done: 0, total: 0, added: 0, count: lib.sounds.length, bytes: totalBytes, sourcesDone, sourcesTotal: active.length, found: candidates.length });
-  // Alle bronnen tegelijk doorzoeken (verschillende servers), dat scheelt veel wachttijd.
+  // Search every source at once (different servers), which saves a lot of waiting.
   await Promise.all(active.map(async ([name, fn]) => {
-    log(`== ${collectorNames[name]}: zoeken gestart ==`);
-    try { const found = await fn(); candidates.push(...found); log(`== ${collectorNames[name]}: ${found.length} kandidaten ==`); }
-    catch (e) { if (e.message === 'Gestopt') throw e; log(`!! ${name} afgebroken: ${e.message}`); }
+    log(`== ${collectorNames[name]}: search started ==`);
+    try { const found = await fn(); candidates.push(...found); log(`== ${collectorNames[name]}: ${found.length} candidates ==`); }
+    catch (e) { if (e.message === 'Stopped') throw e; log(`!! ${name} aborted: ${e.message}`); }
     sourcesDone++; report();
   }));
 
@@ -712,7 +712,7 @@ export async function runFetch(opts = {}) {
     if (!byKind.has(cls.kind)) byKind.set(cls.kind, []);
     byKind.get(cls.kind).push(c);
   }
-  // Binnen een soort: bronnen afwisselen, langste eerst.
+  // Within a kind: alternate sources, longest first.
   for (const [kind, list] of byKind) {
     const groups = new Map();
     for (const c of list.sort((a, b) => (b.seconds || 0) - (a.seconds || 0))) {
@@ -726,13 +726,14 @@ export async function runFetch(opts = {}) {
   const queue = [];
   const kindLists = [...byKind.values()];
   while (kindLists.some((l) => l.length)) for (const l of kindLists) if (l.length) queue.push(l.shift());
-  log(`\n${queue.length} nieuwe kandidaten (${skipped} overgeslagen). Per soort: ${[...byKind.keys()].map((k) => KIND_LABELS[k]).join(', ')}`);
+  log(`
+${queue.length} new candidates (${skipped} skipped). Per kind: ${[...byKind.keys()].map((k) => KIND_LABELS[k]).join(', ')}`);
   if (dry) {
     for (const c of queue.slice(0, 400)) log(`  [${c.cls.kind}] ${c.source} | ${c.title.slice(0, 70)} (${c.seconds ? Math.round(c.seconds) + 's' : '?'})`);
     return { added: 0, skipped, failed: 0, count: lib.sounds.length, bytes: totalBytes, candidates: queue.length };
   }
 
-  // Fase 2: gebalanceerd downloaden met 3 parallelle downloads
+  // Phase 2: balanced downloading with 3 parallel downloads
   const stats = { added: 0, skipped, failed: 0 };
   let index = 0; let done = 0; let stop = false;
   const soundsDir = path.join(dir, 'sounds');
@@ -747,7 +748,7 @@ export async function runFetch(opts = {}) {
       const file = `${c.source}-${slug(c.title)}-${hash(c.id)}.${c.ext}`;
       try {
         const buf = await f.bytes(c.url, maxFile);
-        if (buf.length < 20000) throw new Error('bestand te klein');
+        if (buf.length < 20000) throw new Error('file too small');
         fs.writeFileSync(path.join(soundsDir, file), buf);
         const entry = {
           id: c.id, title: c.title, rawTitle: c.title, source: c.source, sourceName: SOURCE_NAMES[c.source], sourceUrl: c.sourceUrl,
@@ -761,7 +762,7 @@ export async function runFetch(opts = {}) {
         log(`  + [${c.cls.kind}] ${c.title.slice(0, 70)} (${(buf.length / MB).toFixed(1)} MB, ${SOURCE_NAMES[c.source]})`);
         if (stats.added % 5 === 0) saveLibrary(dir, lib);
       } catch (e) {
-        if (e.message === 'Gestopt') throw e;
+        if (e.message === 'Stopped') throw e;
         stats.failed++;
         log(`  ! ${c.title.slice(0, 50)}: ${e.message}`);
       }
@@ -774,11 +775,12 @@ export async function runFetch(opts = {}) {
   } finally {
     saveLibrary(dir, lib);
   }
-  if (stop) log(`Schijflimiet van ${(maxBytes / 1024 / MB).toFixed(1)} GB bereikt.`);
+  if (stop) log(`Disk limit of ${(maxBytes / 1024 / MB).toFixed(1)} GB reached.`);
   const perKind = {};
   for (const s of lib.sounds) perKind[s.kind] = (perKind[s.kind] || 0) + 1;
-  log(`\nKlaar. Toegevoegd: ${stats.added}, overgeslagen: ${stats.skipped}, mislukt: ${stats.failed}. Totaal: ${lib.sounds.length} geluiden, ${(totalBytes / MB).toFixed(0)} MB.`);
-  log('Per soort: ' + Object.entries(perKind).map(([k, n]) => `${KIND_LABELS[k]} ${n}`).join(', '));
+  log(`
+Done. Added: ${stats.added}, skipped: ${stats.skipped}, failed: ${stats.failed}. Total: ${lib.sounds.length} sounds, ${(totalBytes / MB).toFixed(0)} MB.`);
+  log('Per kind: ' + Object.entries(perKind).map(([k, n]) => `${KIND_LABELS[k]} ${n}`).join(', '));
   progress({ phase: 'klaar', done, total: queue.length, added: stats.added, count: lib.sounds.length, bytes: totalBytes });
   return { ...stats, count: lib.sounds.length, bytes: totalBytes };
 }
@@ -787,11 +789,11 @@ export async function runFetch(opts = {}) {
 if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) {
   const args = Object.fromEntries(process.argv.slice(2).map((a) => { const m = a.match(/^--([^=]+)(?:=(.*))?$/); return m ? [m[1], m[2] ?? true] : [a, true]; }));
   const ac = new AbortController();
-  process.on('SIGINT', () => { console.log('\nStoppen...'); ac.abort(); });
+  process.on('SIGINT', () => { console.log('\nStopping...'); ac.abort(); });
   if (args.retitle) { // alleen titels opschonen
     const dir = args.dir ? path.resolve(String(args.dir)) : path.join(ROOT, 'public');
     const lib = loadLibrary(dir); saveLibrary(dir, lib);
-    console.log(`${lib.sounds.length} titels opgeschoond.`); for (const s of lib.sounds.slice(0, 40)) console.log(`  ${s.rawTitle}  ->  ${s.title}`);
+    console.log(`${lib.sounds.length} titles cleaned up.`); for (const s of lib.sounds.slice(0, 40)) console.log(`  ${s.rawTitle}  ->  ${s.title}`);
     process.exit(0);
   }
   runFetch({
@@ -801,5 +803,5 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.a
     only: args.only ? String(args.only).split(',') : null,
     drop: args.drop ? String(args.drop).split(',') : null,
     dry: !!args.dry, signal: ac.signal,
-  }).catch((e) => { console.error(e.message === 'Gestopt' ? 'Gestopt.' : e); process.exit(e.message === 'Gestopt' ? 0 : 1); });
+  }).catch((e) => { console.error(e.message === 'Stopped' ? 'Stopped.' : e); process.exit(e.message === 'Stopped' ? 0 : 1); });
 }

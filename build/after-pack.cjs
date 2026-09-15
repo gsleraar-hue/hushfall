@@ -1,15 +1,15 @@
 'use strict';
 
-// Ad-hoc ondertekenen voor macOS.
+// Ad-hoc signing for macOS.
 //
-// Een Mac met Apple Silicon weigert programma's die helemaal geen handtekening
-// hebben - ook als jij in de instellingen toestemming geeft. Een echte
-// handtekening kost een Apple-account van $99 per jaar, maar er is een gratis
-// tussenvorm: ad-hoc ondertekenen (`codesign -s -`). Daarmee start de app, en
-// hoef je alleen de eerste keer via Systeeminstellingen toestemming te geven.
+// A Mac with Apple Silicon refuses programs that carry no signature at all -
+// even if you grant permission in System Settings. A real signature costs an
+// Apple account at $99 a year, but there is a free middle ground: ad-hoc
+// signing (`codesign -s -`). With that the app starts, and you only have to
+// allow it once, through System Settings, the first time.
 //
-// electron-builder roept dit bestand aan nadat hij de .app in elkaar heeft
-// gezet, vlak voordat de dmg gemaakt wordt.
+// electron-builder calls this file after it has assembled the .app, right
+// before the dmg is made.
 
 const { execFileSync } = require('child_process');
 const path = require('path');
@@ -28,8 +28,8 @@ exports.default = async function naVerpakken(context) {
     );
     console.log('  • ad-hoc ondertekend    ' + app);
 
-    // Nakijken of het ook echt gelukt is; een stille mislukking levert een app
-    // op die pas bij de gebruiker weigert te starten.
+    // Check that it really worked; a silent failure produces an app that only
+    // refuses to start once it reaches the user.
     execFileSync('codesign', ['--verify', '--verbose=1', app], { stdio: 'inherit' });
   } catch (err) {
     console.error('  • ad-hoc ondertekenen mislukt: ' + err.message);

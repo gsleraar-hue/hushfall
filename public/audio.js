@@ -1,9 +1,9 @@
-// Audio-engine: Web Audio met bussen (hoofd, effecten, ruis), geluidslagen die loopen,
-// een ruisgenerator, radio via <audio> en een timer met uitfaden.
+// Audio engine: Web Audio with buses (master, effects, noise), looping sound layers,
+// a noise generator, radio through <audio>, and a timer with a fade-out.
 //
-// SomaFM heeft meer dan een streamserver. Valt de eerste uit, of komt hij op
-// een bepaald netwerk niet door, dan proberen we de volgende - en als laatste
-// het gewone http-adres.
+// SomaFM has more than one stream server. If the first one drops, or does not get
+// through on a particular network, we try the next - and the plain http address
+// as a last resort.
 function radioAdressen(url) {
   const lijst = [url];
   const m = /^https?:\/\/ice(\d)\.somafm\.com\/(.+)$/.exec(url);
@@ -31,8 +31,8 @@ function radioAdressen(url) {
         const ctx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'playback' });
         this.ctx = ctx;
         // Keten: bussen -> mix -> timer -> hoofdvolume -> dempen -> luidspreker.
-        // De uitzending naar Sonos takt af op `tapPoint` (na de timer, vóór volume en dempen), zodat
-        // uitfaden ook daar geldt maar het volume van je pc de uitzending niet stiller maakt.
+        // The broadcast to Sonos branches off at `tapPoint` (after the timer, before volume and mute), so
+        // fading out applies there too while the volume of your pc does not quieten the broadcast.
         this.mix = ctx.createGain();
         this.fade = ctx.createGain();   // timer-uitfaden
         this.master = ctx.createGain(); // hoofdvolume
@@ -65,7 +65,7 @@ function radioAdressen(url) {
     setMuted(m) { this.muted = m; this.applyVolumes(); this.emit('state'); }
 
     // ---- Lagen -------------------------------------------------------------
-    /** Start (of update) een laag. origin: 'main' (vanaf Sferen) of 'fx' (vanaf Mixer). */
+    /** Start (or update) a layer. origin: 'main' (from Moods) or 'fx' (from the Mixer). */
     async addLayer(sound, { gain = 0.7, origin = 'fx' } = {}) {
       this.ensure();
       let layer = this.layers.get(sound.id);
@@ -85,7 +85,7 @@ function radioAdressen(url) {
       if (!this.layers.size && !this.noise.on && !this.radio.playing) { this.playing = false; }
       this.emit('layers'); this.emit('state');
     }
-    /** Vervangt alle lagen die vanaf Sferen gestart zijn door dit geluid. */
+    /** Replaces every layer started from Moods with this sound. */
     async playMain(sound, gain = 0.8) {
       for (const [id, l] of [...this.layers]) if (l.origin === 'main' && id !== sound.id) this.removeLayer(id);
       this.playing = true;
@@ -108,9 +108,9 @@ function radioAdressen(url) {
       this.playing = false;
       for (const l of this.layers.values()) l.pause();
       this.stopNoiseNodes();
-      // Een live zender kun je niet even stilzetten en later oppakken: pauze
-      // met alleen radio aan betekent radio uit. Anders bleef de zender staan
-      // als "Verbinden..." en kwam hij bij het volgende geluid weer mee.
+      // A live station cannot be paused and picked up later: pause
+      // with nothing but radio on means radio off. Otherwise the station stayed
+      // on "Verbinden..." (connecting) and came back along with the next sound.
       if (this.radio.station && !this.layers.size && !this.noise.on) { this.stopRadio(); return; }
       if (this.radio.el) this.radio.el.pause();
       this.emit('state');
@@ -157,7 +157,7 @@ function radioAdressen(url) {
       const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = this.noise.tone;
       const g = ctx.createGain(); g.gain.value = 0;
       let chain = src.connect(hp).connect(lp);
-      if (this.noise.color === 'grijs') { // grofweg gelijk voor het oor: middentonen dempen
+      if (this.noise.color === 'grijs') { // roughly equal to the ear: damp the mid tones
         const peak = ctx.createBiquadFilter(); peak.type = 'peaking'; peak.frequency.value = 2500; peak.Q.value = 0.7; peak.gain.value = -12;
         const lows = ctx.createBiquadFilter(); lows.type = 'lowshelf'; lows.frequency.value = 200; lows.gain.value = 8;
         chain = chain.connect(peak).connect(lows);
@@ -179,7 +179,7 @@ function radioAdressen(url) {
       Object.assign(this.noise, patch);
       if (this.noise.on) {
         this.ensure();
-        if (!this.playing) { this.play(); } // ruis aanzetten start het geluid altijd, ook als er niets anders speelt
+        if (!this.playing) { this.play(); } // turning on noise always starts the sound, even with nothing else playing
         else if (!this.noise.nodes || colorChanged) { this.startNoise(); }
         else {
           const t = this.ctx.currentTime;
@@ -213,7 +213,7 @@ function radioAdressen(url) {
       el.volume = this.muted ? 0 : Math.min(1, this.volumes.master * this.volumes.radio);
       this.playing = true;
       el.play().catch((e) => this._radioFout(e && e.name));
-      // Blijft het bij "Verbinden..."? Dan is er ook iets mis, alleen zonder foutmelding.
+      // Still stuck on "Verbinden..."? Then something is wrong as well, only without an error.
       clearTimeout(this.radio.klok);
       this.radio.klok = setTimeout(() => { if (this.radio.station && !this.radio.playing) this._radioFout('geen antwoord binnen 20 seconden'); }, 20000);
       this.emit('radio'); this.emit('state');
@@ -224,7 +224,7 @@ function radioAdressen(url) {
       const el = this.radio.el;
       const code = el && el.error ? el.error.code : 0;
       const detail = el && el.error && el.error.message ? el.error.message : '';
-      // Nog een adres over? Dan die.
+      // Another address left? Then that one.
       if (this.radio.poging + 1 < this.radio.adressen.length) { this.radio.poging++; this._radioStart(); return; }
       const uitleg = { 1: 'afgebroken', 2: 'netwerkfout: de stream komt niet binnen', 3: 'de audio is niet te decoderen', 4: 'adres of formaat wordt niet ondersteund' }[code] || naam || 'onbekende fout';
       const geprobeerd = this.radio.adressen.length;
@@ -260,7 +260,7 @@ function radioAdressen(url) {
     }
   }
 
-  /** Eén loopend geluid (via <audio> zodat lange bestanden weinig geheugen kosten). */
+  /** One looping sound (through <audio>, so long files cost little memory). */
   class Layer {
     constructor(engine, sound, origin) {
       this.engine = engine; this.sound = sound; this.origin = origin; this.gainValue = 0.7;
@@ -280,7 +280,7 @@ function radioAdressen(url) {
     }
     async play() {
       if (!this.el.paused) return;
-      // willekeurig startpunt zodat meerdere lagen niet synchroon beginnen
+      // a random starting point so several layers do not begin in sync
       try { if (!this.startedOnce && this.el.duration && isFinite(this.el.duration)) this.el.currentTime = Math.random() * this.el.duration * 0.8; } catch {}
       this.startedOnce = true;
       this.gain.gain.cancelScheduledValues(this.engine.ctx.currentTime);
@@ -304,8 +304,8 @@ function radioAdressen(url) {
   }
 
   /**
-   * Eén laag die Hushfall zelf maakt met Web Audio (zie synth.js). Kost geen bestand en herhaalt nooit.
-   * De generator wordt bij pauze afgebroken zodat hij geen rekentijd meer kost.
+   * One layer Hushfall makes itself with Web Audio (see synth.js). Costs no file and never repeats.
+   * The generator is torn down on pause so it stops costing processor time.
    */
   class SynthLayer {
     constructor(engine, sound, origin) {

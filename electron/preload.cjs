@@ -17,10 +17,10 @@ contextBridge.exposeInMainWorld('hushfallDesktop', {
   resetFolder: () => ipcRenderer.invoke('library:resetFolder'),
   onLog: listen('library:log'),
   onProgress: listen('library:progress'),
-  // Bijwerken: de app meldt zelf wanneer er een nieuwere versie klaarstaat.
+  // Updating: the app reports for itself when a newer version is ready.
   onUpdate: listen('update:staat'),
   installUpdate: () => ipcRenderer.invoke('update:installeer'),
-  // Sonos: spelers op het lokale netwerk laten meeluisteren
+  // Sonos: let speakers on the local network listen along
   sonos: {
     list: () => ipcRenderer.invoke('sonos:list'),
     play: (host) => ipcRenderer.invoke('sonos:play', host),

@@ -1,260 +1,272 @@
 # Hushfall
 
-Ambient geluiden om te focussen, ontspannen en slapen: een donkere app met sferen, een geluidenmixer, een
-ruisgenerator, ambient radio, timers en bewegende achtergronden. Alles wordt gesorteerd op **soort** (regen, zee,
-vuur, vogels, café, jazz, film, kerst, gregoriaans, ...) en **sfeer** (focus, ontspanning, slapen, natuur, koffiehuis, feestelijk,
-cinematisch, stad, muziek).
+Ambient sound for focus, calm and sleep: a dark app with moods, a sound mixer, a noise generator, ambient
+radio, timers and moving backgrounds. Everything is sorted by **kind** (rain, sea, fire, birds, café, jazz,
+film, christmas, gregorian, ...) and by **mood** (focus, calm, sleep, nature, coffee house, festive,
+cinematic, city, music).
 
-De geluiden komen uit twee hoeken:
+The sounds come from two directions:
 
-1. **Hushfall's eigen geluiden** (82 stuks, `public/synth.js`): live gemaakt met Web Audio, dus geen bestanden en
-   geen herhaling. Deze zitten altijd in de app, ook direct na installatie.
-   - **Natuur**: regen met losse resonerende druppels; haardvuur waarin elke knap een korte ruisexplosie is
-     (een gestemde knap klinkt onherroepelijk als popcorn) met daaronder een fijn geknetter dat nooit
-     stilvalt; wind waarin windstoten het volume, de kleur, het fluiten en het ritselen samen aansturen;
-     branding waarin elke golf aanrolt, breekt, seconden nabruist en over het zand terugtrekt, in sets van
-     een paar kleine en dan een grote; een beek van losse belletjes; onweer dat rolt in onregelmatige
-     vlagen; vogelzang met harmonischen en vibrato; krekels en kikkers.
-   - **Mensen**: café en kerstmarkt met échte stemmen. Elke spreker heeft een eigen toonhoogte en tempo en
-     praat klinkers via formantfilters, dus je hoort gesprekken zonder woorden. Plus kopjes, bestek, stoelen
-     en de espressomachine. Verkeer met dopplereffect: de toonhoogte zakt op het moment dat een auto
-     voorbij is, en de motor komt eerder aan dan het bandengeruis.
-   - **Muziek**: acht ambient stukken en elf jazzvarianten uit één combomotor met echte jazzharmonie
-     (ii-V-I, blues, bossa, modaal): pianojazz, pianotrio, coffee table jazz met vibrafoon, saxofoontrio met
-     een blazende rietstem, late-avondblues, bossa nova op nylon gitaar en lo-fi jazz.
-   - **Kerst**: negen sfeerbeelden, van een vierstemmig koor en een kerkorgel tot een carillon, een arrenslee
-     met hoefslag in de sneeuw, knerpende sneeuw onder je voeten, een kerstmarkt met draaiorgel en de speeldoos.
-     De melodieën zijn kerstliederen uit het publieke domein.
-   - **Filmmuziek**: twintig atmosferische stukken. Zeven komen uit één motor met drie handschriften:
-     trage strijkers met een lage drone en heel langzame akkoordwisselingen; een postminimalistisch
-     pianomotief dat blijft herhalen en waarin af en toe één noot verschuift; en brede analoge pads met
-     een trage filterveeg, een arpeggio door de echo en een zingende lead. Onder alles ligt lichte bandruis.
-     Daarnaast vier stukken kamermuziek rond een viltpiano: het vilt tussen de hamers en de snaren maakt
-     de aanslag zacht, en je hoort het mechaniek meespelen, de hamer die neerkomt en de demper die loslaat.
-     Daarboven ligt een klein strijkkwartet, en er vallen cascades van hoge tonen als vanzelf uit het akkoord.
-     En drie stukken voor cello: aangehouden tonen die traag aanzwellen, met de kastresonanties van het
-     instrument, hoorbaar strijkgeruis dat toeneemt naarmate de stok dichter bij de kam komt, glijdende
-     tonen en soms twee cello's zo dicht naast elkaar dat je ze hoort zweven. In de industriële variant
-     staat de cello in een grote betonnen ruimte, met verre machines en aangeslagen metaal.
-     Tot slot zes donker-elektronische stukken: strak, koud en vuil, met een dreunende sub eronder. Drie
-     daarvan draaien om een sequencer die bewust monofoon is gebouwd zoals een echte analoge: één
-     oscillator die nooit stopt, één filter, één versterker, en het hele patroon in de automatisering.
-     Je hoort het glijden tussen de tonen en een resonante filter die over minuten opent en weer dichtgaat.
-     Twee stukken zetten daar een hard aangeslagen pianomotief tegenover, dubbel gespeeld met een tweede
-     die er net naast staat — die onzuiverheid maakt het koud. En één stuk is een machinehal zonder
-     melodie: metaal op een raster dat net niet klopt, perslucht en een motor die nooit gelijk loopt.
-     Alles gaat door een bandloop met wow en ruis, want zonder die degradatie klinkt dit steriel.
-   - **Middeleeuwse kerkmuziek**: zeven gezangen in kerktoonsoorten (dorisch, frygisch, lydisch, mixolydisch),
-     met de opbouw van echt gregoriaans: een intonatie omhoog, de tekst op de reciteertoon en een cadens terug
-     naar de finalis, met melismen en vrije ritmiek. Gregoriaans gezang, Completen, Vespers, Lauden, Organum
-     (vroege meerstemmigheid in kwinten), Hildegard von Bingen (hoge stemmen, wijde sprongen, lange melismen
-     boven een bourdon) en Stille kapel. De zangstemmen worden met formantfilters op Latijnse klinkers gevormd,
-     in een kerkgalm van acht seconden. Het orgel wisselt per couplet van registratie (prestant, fluit,
-     plenum, tongwerk), het balgwerk laat de toon licht zweven en soms staat de tremulant aan.
+1. **Hushfall's own sounds** (82 of them, `public/synth.js`): made live with Web Audio, so no files and no
+   looping. These are always in the app, right after installing too.
+   - **Nature**: rain with individual resonating drops; a hearth fire in which every pop is a short burst of
+     noise (a tuned pop sounds inescapably like popcorn) over a fine crackle that never falls silent; wind in
+     which the gusts drive volume, colour, whistling and rustling together; surf in which every wave rolls in,
+     breaks, hisses for seconds and pulls back over the sand, in sets of a few small ones and then a big one;
+     a brook of separate bubbles; thunder rolling in irregular bouts; birdsong with harmonics and vibrato;
+     crickets and frogs.
+   - **People**: a café and a christmas market with real voices. Every speaker has their own pitch and pace
+     and speaks vowels through formant filters, so you hear conversation without words. Plus cups, cutlery,
+     chairs and the espresso machine. Traffic with a doppler effect: the pitch drops the moment a car is past,
+     and the engine arrives before the tyre noise.
+   - **Music**: eight ambient pieces and eleven jazz variations out of one combo engine with real jazz harmony
+     (ii-V-I, blues, bossa, modal): piano jazz, piano trio, coffee table jazz with vibraphone, sax trio with a
+     breathy reed voice, late night blues, bossa nova on nylon guitar and lo-fi jazz.
+   - **Christmas**: nine scenes, from a four-part choir and a church organ to a carillon, a sleigh ride with
+     hoofbeats in the snow, snow crunching underfoot, a christmas market with a barrel organ, and the music
+     box. The melodies are public domain carols.
+   - **Film music**: twenty atmospheric pieces. Seven come out of one engine with three handwritings: slow
+     strings over a low drone with very slow chord changes; a postminimalist piano motif that keeps repeating
+     while one note shifts now and then; and wide analogue pads with a slow filter sweep, an arpeggio through
+     the delay and a singing lead. Light tape noise sits underneath all of it. Next to those, four pieces of
+     chamber music around a felt piano: the felt between the hammers and the strings softens the attack, and
+     you hear the mechanism playing along, the hammer coming down and the damper letting go. A small string
+     quartet sits above it, and cascades of high notes fall out of the chord as if by themselves. And three
+     pieces for cello: sustained notes swelling slowly, with the body resonances of the instrument, audible
+     bow noise that grows as the bow moves closer to the bridge, sliding notes, and sometimes two cellos so
+     close together that you hear them beat. In the industrial variant the cello stands in a large concrete
+     space, with distant machines and struck metal. Finally six dark electronic pieces: tight, cold and dirty,
+     with a pounding sub underneath. Three of them revolve around a sequencer deliberately built monophonic
+     like a real analogue one: a single oscillator that never stops, one filter, one amplifier, and the whole
+     pattern in the automation. You hear the glide between notes and a resonant filter opening and closing
+     over minutes. Two pieces set a hard-struck piano motif against that, doubled with a second one that sits
+     just beside it — that impurity is what makes it cold. And one piece is a machine hall without a melody:
+     metal on a grid that is not quite in time, compressed air and a motor that never runs true. All of it
+     goes through a tape loop with wow and noise, because without that degradation this sounds sterile.
+   - **Medieval church music**: seven chants in church modes (dorian, phrygian, lydian, mixolydian), built the
+     way real plainchant is: an intonation rising, the text on the reciting tone, and a cadence back to the
+     finalis, with melismas and free rhythm. Gregorian chant, Compline, Vespers, Lauds, Organum (early
+     polyphony in fifths), Hildegard von Bingen (high voices, wide leaps, long melismas over a drone) and
+     Quiet chapel. The voices are shaped onto Latin vowels with formant filters, in an eight second church
+     reverb. The organ changes registration per verse (principal, flute, plenum, reed), the bellows let the
+     tone waver slightly, and sometimes the tremulant is on.
 
-   Wat een geluid echt maakt, zit steeds in dezelfde drie dingen. Gebeurtenissen moeten belangrijker zijn
-   dan het ruisbed: vuur is knappen, geen geruis. Niets mag exact zijn: toonhoogte, tempo en volume zwerven
-   altijd een beetje. En de sterkte van gebeurtenissen is scheef verdeeld: de meeste knappen, druppels of
-   golven zijn nauwelijks hoorbaar en af en toe zit er een stevige tussen. Voor stemmen komt daar de
-   bronklank bij: een zaagtand valt 6 dB per octaaf af en echte stembanden ongeveer twee keer zo snel, dus
-   alle zang en spraak gebruikt een eigen golfvorm met dat verloop (`stemGolf`). Zonder die correctie
-   klinkt formantsynthese blikkerig en nasaal.
+   What makes a sound real always comes down to the same three things. Events have to matter more than the
+   noise bed: fire is popping, not hissing. Nothing may be exact: pitch, tempo and volume always wander a
+   little. And the strength of events is skewed: most pops, drops or waves are barely audible and every so
+   often there is a solid one. For voices there is one more thing, the source waveform: a sawtooth falls off
+   6 dB per octave and real vocal folds roughly twice as fast, so all singing and speech uses its own waveform
+   with that slope (`stemGolf`). Without that correction formant synthesis sounds tinny and nasal.
 
-2. **Opnames van gratis bronnen** (optioneel te downloaden): veldopnames en muziek van BBC Sound Effects,
-   Internet Archive, Wikimedia Commons en Mixkit. Zie [Bronnen en licenties](#bronnen-en-licenties).
+2. **Recordings from free sources** (optional download): field recordings and music from BBC Sound Effects,
+   the Internet Archive, Wikimedia Commons and Mixkit. See [Sources and licences](#sources-and-licences).
 
-Werkt als website (in de browser) en als Windows-app (Electron).
+Runs as a website (in the browser) and as a Windows app (Electron).
 
-## Snel starten (browser)
+## Quick start (browser)
 
-Vereist: Node.js 20 of nieuwer.
+Requires Node.js 20 or newer.
 
 ```bash
 npm install
-npm run fetch          # snelle selectie, ±500 MB
+npm run fetch          # a quick selection, around 500 MB
 npm run dev            # http://127.0.0.1:8790
 ```
 
-Alles ophalen wat de bronnen aan ambient geluid bieden (standaard tot 8 GB, gebalanceerd over alle soorten):
+To pull in everything the sources have to offer in ambient sound (up to 8 GB by default, balanced across all
+kinds):
 
 ```bash
 npm run fetch -- --all --max-gb=8
 ```
 
-`node server.js --lan` maakt de site ook bereikbaar op je telefoon binnen hetzelfde wifi-netwerk.
+`node server.js --lan` also makes the site reachable from your phone on the same wifi network.
 
-## Windows-app
-
-```bash
-npm start              # app starten vanuit de projectmap (gebruikt public/ als bibliotheek)
-npm run dist           # versienummer +1 en dan installer + portable exe bouwen in dist/
-```
-
-`npm run dist` verhoogt eerst het patch-nummer in `package.json` en zet dat in de bestandsnamen, zodat elke
-build zijn eigen versie heeft: `Hushfall Setup 1.0.1.exe` en `Hushfall-portable-1.0.1.exe`. De versie staat ook
-onderaan **Instellingen** in de app.
+## Windows app
 
 ```bash
-npm run bump minor     # 1.0.4 -> 1.1.0 (of: major, patch, of een nummer als 2.0.0)
-npm run dist:keep      # opnieuw bouwen zonder het nummer te verhogen, bijvoorbeeld na een mislukte build
-npm run release        # versienummer +1, bouwen én als release op GitHub zetten
+npm start              # run the app from the project folder (uses public/ as the library)
+npm run dist           # bump the version by one, then build the installer and portable exe into dist/
 ```
 
-### Bijwerken
+`npm run dist` first raises the patch number in `package.json` and puts it in the file names, so every build
+has its own version: `Hushfall Setup 1.0.1.exe` and `Hushfall-portable-1.0.1.exe`. The version also shows at
+the bottom of **Instellingen** (Settings) in the app.
 
-De app werkt zichzelf bij. Acht seconden na het starten, en daarna elke zes uur, kijkt hij of er een nieuwere
-release op GitHub staat, haalt die op de achtergrond binnen en installeert hem zodra je Hushfall afsluit. Je hoeft
-de vorige versie dus niet te de-installeren, en bijwerken onderbreekt nooit waar je naar aan het luisteren bent.
-Staat er een versie klaar, dan verschijnt bovenin een balk met **Nu herstarten** voor wie niet wil wachten. De
-gedownloade bibliotheek staat in de gebruikersmap en blijft bij een update gewoon staan.
+```bash
+npm run bump minor     # 1.0.4 -> 1.1.0 (or: major, patch, or a number like 2.0.0)
+npm run dist:keep      # build again without raising the number, for instance after a failed build
+npm run release        # bump the version, build, and put it on GitHub as a release
+```
 
-Publiceren kan handmatig met `npm run release` (vereist een `GH_TOKEN` in de omgeving), of door een tag te
-pushen: `.github/workflows/release.yml` bouwt dan op een GitHub-runner en hangt de installer aan de release.
-Eigenaar en repo leidt electron-builder af uit de git-remote, dus er staat geen naam hard in de configuratie.
-Builds met `npm run dist` publiceren nooit en werken zichzelf ook niet bij; die zijn om te testen.
+### Updating
+
+The app updates itself. Eight seconds after starting, and every six hours after that, it checks whether there
+is a newer release on GitHub, fetches it in the background and installs it once you quit Hushfall. So you do
+not have to uninstall the previous version, and updating never interrupts whatever you are listening to. When
+a version is ready, a bar appears at the top with **Nu herstarten** (Restart now) for anyone who does not want
+to wait. The downloaded library lives in your user folder and simply stays put across updates.
+
+Publishing can be done by hand with `npm run release` (which needs a `GH_TOKEN` in the environment), or by
+pushing a tag: `.github/workflows/release.yml` then builds on a GitHub runner and attaches the installer to
+the release. electron-builder works out the owner and the repo from the git remote, so no name is hard-coded
+in the configuration. Builds made with `npm run dist` never publish and never update themselves; those are for
+testing.
 
 ### Microsoft Store (MSIX)
 
 ```bash
-npm run dist:store     # maakt de Store-tegels en bouwt dist/Hushfall <versie>.appx
+npm run dist:store     # makes the Store tiles and builds dist/Hushfall <version>.appx
 ```
 
-Dit is bewust een apart pakket, want de Store-versie gedraagt zich anders dan de installer:
+This is deliberately a separate package, because the Store version behaves differently from the installer:
 
-- **Zelf bijwerken staat uit.** De Store werkt de app bij en de installatiemap is alleen-lezen, dus zelf
-  bijwerken zou mislukken en wordt door de Store afgekeurd. De app herkent dit zelf aan
-  `process.windowsStore`; er is dus geen aparte broncode.
-- **Alleen bronnen die commercieel gebruik toestaan.** De BBC RemArc-licentie staat alleen persoonlijk,
-  educatief en niet-commercieel gebruik toe, en de gratis Mixkit-licenties verbieden herdistributie. De
-  Store-versie laat die twee weg (`STORE_BRONNEN` in `electron/main.cjs`) en houdt Creative Commons en
-  publiek domein over. De 82 eigen geluiden zitten er sowieso in.
-- **De tegels** komen uit `scripts/make-icon.js`, dat naast het icoon zes PNG's in `build/appx/` schrijft.
+- **Self-updating is off.** The Store updates the app and the install folder is read-only, so updating itself
+  would fail and the Store would reject it. The app recognises this on its own through
+  `process.windowsStore`; there is no separate source code for it.
+- **Only sources that allow commercial use.** The BBC RemArc licence allows personal, educational and
+  non-commercial use only, and the free Mixkit licences forbid redistribution. The Store version leaves those
+  two out (`STORE_BRONNEN` in `electron/main.cjs`) and keeps Creative Commons and public domain. The 82 own
+  sounds are in there regardless.
+- **The tiles** come from `scripts/make-icon.js`, which writes six PNGs into `build/appx/` next to the icon.
 
-Wat je zelf moet doen vóór het inleveren: reserveer de naam in Partner Center en zet de drie waarden die je
-daar krijgt in het `appx`-blok van `package.json` — `identityName`, `publisher` en `publisherDisplayName`.
-Wat er nu staat is alleen goed genoeg om lokaal te bouwen.
+What you have to do yourself before submitting: reserve the name in Partner Center and put the three values it
+gives you into the `appx` block of `package.json` — `identityName`, `publisher` and `publisherDisplayName`.
+What is in there now is only good enough to build locally.
 
-Lokaal bouwen vereist `makeappx.exe` uit de Windows SDK. Staat die er niet, dan eindigt de build met
-`spawn UNKNOWN`. De runner van GitHub heeft de SDK wel, dus de taak `store` in
-`.github/workflows/release.yml` bouwt het pakket zonder dat je lokaal iets hoeft te installeren.
+Building locally needs `makeappx.exe` from the Windows SDK. Without it the build ends in `spawn UNKNOWN`. The
+GitHub runner does have the SDK, so the `store` job in `.github/workflows/release.yml` builds the package
+without you installing anything locally.
 
-Het gegenereerde manifest declareert `runFullTrust` met `EntryPoint="Windows.FullTrustApplication"`. De app
-draait in het MSIX-pakket dus als gewone desktoptoepassing en niet in een AppContainer. Dat is belangrijk:
-de lokale server op 127.0.0.1, de SSDP-zoektocht naar Sonos en de streamserver werken daardoor net zoals in
-de gewone installer, zonder extra capabilities.
+The generated manifest declares `runFullTrust` with `EntryPoint="Windows.FullTrustApplication"`. Inside the
+MSIX package the app therefore runs as a normal desktop application and not in an AppContainer. That matters:
+it is what lets the local server on 127.0.0.1, the SSDP search for Sonos and the stream server work exactly as
+they do in the regular installer, without extra capabilities.
 
-### Als het geluid hapert
+### When the sound stutters
 
-Web Audio rekent alles op één enkele processorkern, en die kun je vol krijgen. De duurste post is met
-afstand de convolutiegalm. Gemeten, als deel van één kern:
+Web Audio does all of its work on a single processor core, and you can fill that core up. The most expensive
+item is the convolution reverb, by a wide margin. Measured, as a fraction of one core:
 
-| | kosten |
+| | cost |
 |---|---|
-| kerkgalm 8 s stereo | 0,36 |
-| kerkgalm 5 s mono | 0,17 |
-| 200 oscillatoren | 0,82 |
-| compressor | 0,03 |
+| church reverb, 8 s, stereo | 0.36 |
+| church reverb, 5 s, mono | 0.17 |
+| 200 oscillators | 0.82 |
+| compressor | 0.03 |
 
-Daarom zijn alle impulsresponsen mono en korter (kerk 5 s, zaal 3 s, kamer 1,1 s): de kosten lopen recht op
-met de lengte én het aantal kanalen, terwijl je van een galmstaart niet hoort dat hij mono is. Voor een mix
-van drie geluiden ging de belasting daarmee van 0,77 naar 0,27 van een kern, gemeten over vijf runs.
+That is why all impulse responses are mono and shorter (church 5 s, hall 3 s, room 1.1 s): the cost rises
+straight with the length and with the number of channels, while you cannot hear that a reverb tail is mono.
+For a mix of three sounds that took the load from 0.77 to 0.27 of a core, measured over five runs.
 
-Hapert het toch, bijvoorbeeld doordat er zwaar werk op je pc draait, zet dan **Lichte modus** aan bij
-Instellingen › Beeld. Die laat de ruimtegalm per geluid weg en halveert de deeltjes. Meten doe je met een
-`OfflineAudioContext`: die rendert zo snel als de machine kan, dus rendertijd gedeeld door geluidsduur is
-precies het deel van een kern dat een knoop in werkelijkheid kost.
+If it stutters anyway, for instance because something heavy is running on your pc, switch on **Lichte modus**
+(Lite mode) under Instellingen › Beeld (Settings › Visuals). That drops the per-sound room reverb and halves
+the particles. You measure this with an `OfflineAudioContext`: it renders as fast as the machine can, so
+render time divided by sound duration is exactly the fraction of a core a node really costs.
 
-`npm run dist` maakt `dist/Hushfall Setup 1.0.0.exe` (installer) en `dist/Hushfall-portable.exe`. De 82 eigen geluiden
-zitten in de exe en werken direct. Opnames zitten er niet in (dat zouden gigabytes zijn); die haal je erbij via
-**Instellingen › Bibliotheek**:
+`npm run dist` makes `dist/Hushfall Setup 1.0.0.exe` (installer) and `dist/Hushfall-portable.exe`. The 82 own
+sounds sit inside the exe and work right away. Recordings do not (that would be gigabytes); you add those
+through **Instellingen › Bibliotheek** (Settings › Library):
 
-- **Alle ambient geluiden ophalen** of **Snelle selectie**: downloadt naar `%APPDATA%\Hushfall\library`, met
-  voortgang en een stopknop. Later hervatten kan; bestaande geluiden worden overgeslagen.
-- **Bestaande bibliotheekmap gebruiken…**: wijs een map met `library.json` en `sounds` aan (bijvoorbeeld de
-  `public`-map van dit project). De app leest die direct, zonder kopiëren of opnieuw downloaden.
+- **Alle ambient geluiden ophalen** (fetch all ambient sounds) or **Snelle selectie** (quick selection):
+  downloads into `%APPDATA%\Hushfall\library`, with progress and a stop button. You can resume later; sounds
+  that are already there are skipped.
+- **Bestaande bibliotheekmap gebruiken…** (use an existing library folder): point at a folder with a
+  `library.json` and a `sounds` directory (the `public` folder of this project, for example). The app reads it
+  directly, without copying or downloading again.
 
-De exe is niet ondertekend. Windows SmartScreen kan bij de eerste start waarschuwen: kies "Meer informatie" en
-"Toch uitvoeren".
+The exe is not signed. Windows SmartScreen may warn you on first launch: choose "More info" and "Run anyway".
 
-## Wat zit erin
+## What is in it
 
-- **Sferen**: rijen kaarten per sfeer, een rij met Hushfall's eigen geluiden, plus samengestelde mixen
-  (bijvoorbeeld "Regenachtige leeskamer" = regen + open haard + huisgeluid). Elke soort heeft een eigen
-  kleurenpalet en deeltjes-effect (regen, sneeuw, bladeren, vuurvliegjes, vonken, bellen, sterren).
-- **Mixer**: alle geluiden gegroepeerd per soort, met per geluid een schakelaar en volumeslider, zoeken en filters.
-- **Ruisgenerator**: witte, roze, bruine, blauwe, violette en grijze ruis met klank- en dieptefilter en presets.
-- **Radio**: SomaFM- en Radio Paradise-streams (ambient, downtempo, lounge).
-- **Sonos** (alleen in de Windows-app): stuur precies wat je hoort naar je speakers. Zie hieronder.
-- **Timer**: presets, eigen tijd, uitfaden en pomodoro (25/5).
-- **Volumemixer**: hoofd, sferen, mixer-lagen, ruis en radio apart.
-- **Volledig scherm** met grote titel en verwante geluiden; de bediening verdwijnt na een paar seconden.
-- Sneltoetsen: spatie afspelen/pauze, F volledig scherm, M dempen, S willekeurig, pijltjes volume.
-- De laatste mix en alle instellingen worden onthouden.
+- **Moods**: rows of cards per mood, a row with Hushfall's own sounds, plus composed mixes ("Rainy reading
+  room" = rain + open fire + room tone, for instance). Every kind has its own colour palette and particle
+  effect (rain, snow, leaves, fireflies, sparks, bubbles, stars).
+- **Mixer**: all sounds grouped by kind, with a switch and a volume slider per sound, search and filters.
+- **Noise generator**: white, pink, brown, blue, violet and grey noise with tone and depth filters, and presets.
+- **Radio**: SomaFM and Radio Paradise streams (ambient, downtempo, lounge).
+- **Sonos** (Windows app only): send exactly what you hear to your speakers. See below.
+- **Timer**: presets, your own time, fade-out and pomodoro (25/5).
+- **Volume mixer**: master, moods, mixer layers, noise and radio separately.
+- **Full screen** with a large title and related sounds; the controls disappear after a few seconds.
+- Keyboard shortcuts: space to play/pause, F for full screen, M to mute, S for a random sound, arrows for
+  volume.
+- The last mix and all settings are remembered.
 
 ## Sonos
 
-Klik in de Windows-app op het speaker-icoon rechtsboven. Hushfall zoekt je speakers met SSDP en zet per kamer
-een schakelaar; het volume per kamer regel je in hetzelfde lijstje.
+In the Windows app, click the speaker icon in the top right. Hushfall finds your speakers over SSDP and puts a
+switch next to every room; the volume per room sits in that same list.
 
-Hoe het werkt: een Sonos haalt audio zelf op van een URL, je kunt er niets naartoe duwen. Hushfall wordt daarom
-een radiozender op je eigen netwerk. De gemengde audio (mixen, eigen geluiden, ruis) wordt in een aparte thread
-live naar MP3 omgezet (128 kbps, `public/lib/lame.min.js`) en aangeboden op `http://<jouw-ip>:34872/stream.mp3`.
-De speaker krijgt via UPnP de opdracht die zender te spelen. Geen account, geen cloud, alles binnen je netwerk.
+How it works: a Sonos fetches audio from a URL by itself, you cannot push anything to it. So Hushfall becomes
+a radio station on your own network. The mixed audio (mixes, own sounds, noise) is converted to MP3 live on a
+separate thread (128 kbps, `public/lib/lame.min.js`) and served at `http://<your-ip>:34872/stream.mp3`. The
+speaker is told over UPnP to play that station. No account, no cloud, everything inside your network.
 
-- Die zender start pas als je hem echt gebruikt en biedt **alleen** `/stream.mp3` aan; de rest van de app blijft
-  op `127.0.0.1`. Windows Firewall vraagt de eerste keer om toestemming, want de speaker moet erbij kunnen.
-- Reken op twee tot vijf seconden vertraging: een Sonos buffert een radiostream. Tegelijk op je pc en je Sonos
-  luisteren klinkt daardoor rommelig; dempen op je pc (M) stopt de uitzending niet.
-- De slaaptimer werkt ook op de Sonos, want de aftakking zit ná het uitfaden en vóór je pc-volume.
-- Je pc moet aan blijven en Hushfall open staan; die is immers de zender. Bij afsluiten stopt Hushfall je speakers.
-- Radio gaat niet mee in de uitzending (die stream loopt buiten de mixer om). Een Sonos kan zulke zenders zelf
-  afspelen.
+- That station only starts once you actually use it and serves **nothing but** `/stream.mp3`; the rest of the
+  app stays on `127.0.0.1`. Windows Firewall asks for permission the first time, because the speaker has to be
+  able to reach it.
+- Expect two to five seconds of delay: a Sonos buffers a radio stream. Listening on your pc and your Sonos at
+  the same time sounds messy because of that; muting on your pc (M) does not stop the broadcast.
+- The sleep timer works on the Sonos too, because the branch sits after the fade-out and before your pc volume.
+- Your pc has to stay on with Hushfall open; it is the station, after all. On quitting, Hushfall stops your
+  speakers.
+- Radio does not go into the broadcast (that stream runs outside the mixer). A Sonos can play stations like
+  that by itself.
 
-## Bronnen en licenties
+## Sources and licences
 
-| Bron | Wat | Licentie |
+| Source | What | Licence |
 | --- | --- | --- |
-| Hushfall zelf (`public/synth.js`) | 82 eigen geluiden en muziekstukken, live gemaakt met Web Audio | onderdeel van dit project |
-| [BBC Sound Effects](https://sound-effects.bbcrewind.co.uk/) | 33.000+ opnames, waaronder duizenden sferen en natuuropnames | RemArc-licentie: persoonlijk, educatief en niet-commercieel gebruik |
-| [Internet Archive](https://archive.org/) | veldopnames (o.a. radio aporee) en ambient muziek van netlabels | Creative Commons, per opname vermeld |
-| [Great 78 Project](https://archive.org/details/georgeblood) | gerestaureerde 78-toerenplaten: jazz, swing en kerstmuziek uit de jaren 1920–1950 | historische opnamen, per plaat vermeld |
-| [Wikimedia Commons](https://commons.wikimedia.org/) | geluidsopnames | Creative Commons of publiek domein, per bestand vermeld |
-| [Mixkit](https://mixkit.co/free-sound-effects/) | sfeergeluiden | Mixkit Sound Effects Free License |
-| [Mixkit muziek](https://mixkit.co/free-stock-music/) | ambient, chillout, new age, jazz, lounge en kerstmuziek (volledige mp3's) | Mixkit Stock Music Free License |
-| [Freesound](https://freesound.org/) | optioneel, met gratis API-sleutel | Creative Commons (CC0 en BY) |
+| Hushfall itself (`public/synth.js`) | 82 own sounds and pieces of music, made live with Web Audio | part of this project |
+| [BBC Sound Effects](https://sound-effects.bbcrewind.co.uk/) | 33,000+ recordings, among them thousands of atmospheres and nature recordings | RemArc licence: personal, educational and non-commercial use |
+| [Internet Archive](https://archive.org/) | field recordings (radio aporee among others) and ambient music from netlabels | Creative Commons, stated per recording |
+| [Great 78 Project](https://archive.org/details/georgeblood) | restored 78 rpm records: jazz, swing and christmas music from the 1920s to the 1950s | historical recordings, stated per record |
+| [Wikimedia Commons](https://commons.wikimedia.org/) | sound recordings | Creative Commons or public domain, stated per file |
+| [Mixkit](https://mixkit.co/free-sound-effects/) | atmospheres | Mixkit Sound Effects Free License |
+| [Mixkit music](https://mixkit.co/free-stock-music/) | ambient, chillout, new age, jazz, lounge and christmas music (full mp3s) | Mixkit Stock Music Free License |
+| [Freesound](https://freesound.org/) | optional, with a free API key | Creative Commons (CC0 and BY) |
 
-Per geluid staan bron, licentie en link in `library.json` en in de app (klik op het bronlabel van een kaart).
-Voor Freesound zet je `FREESOUND_KEY=...` in `.env` (sleutel aanmaken op freesound.org/apiv2/apply).
+The source, licence and link for every sound are in `library.json` and in the app (click the source label on a
+card). For Freesound, put `FREESOUND_KEY=...` in `.env` (create a key at freesound.org/apiv2/apply).
 
-## Hoe het ophalen werkt
+## How fetching works
 
-`scripts/fetch-sounds.js` werkt in twee fases:
+`scripts/fetch-sounds.js` works in two phases:
 
-1. **Zoeken**: bij elke bron worden kandidaten verzameld (alleen metadata). Titels, tags en beschrijvingen worden
-   met woordenlijsten ingedeeld in een soort; spraak, effecten en harde geluiden worden overgeslagen. Elke soort
-   krijgt vaste sferen (regen hoort bij focus, ontspanning, slapen en natuur, enzovoort).
-2. **Downloaden**: gebalanceerd, om de beurt per soort en per bron, langste opnames eerst, met drie parallelle
-   downloads, tot de schijflimiet. Zo krijgt elke sfeer een eerlijk deel, ook als een bron enorm is.
+1. **Searching**: candidates are gathered at every source (metadata only). Titles, tags and descriptions are
+   sorted into a kind using word lists; speech, effects and harsh sounds are skipped. Every kind gets fixed
+   moods (rain belongs to focus, calm, sleep and nature, and so on).
+2. **Downloading**: balanced, taking turns per kind and per source, longest recordings first, with three
+   parallel downloads, up to the disk limit. That way every mood gets a fair share, even when one source is
+   enormous.
 
-Opties: `--all`, `--max-gb=N`, `--only=bbc,mixkit,archive,music,jazz,kerst,gregoriaans,commons,freesound`, `--drop=muziek`
-(soort weggooien en opnieuw ophalen), `--dir=map`, `--dry`.
-Het script is herstartbaar: wat er al staat wordt overgeslagen. Titels worden opgeschoond (bestandsnamen,
-catalogus­codes, tracknummers, datums en HOOFDLETTERS verdwijnen; de originele titel blijft bewaard als
-`rawTitle`). Met `node scripts/fetch-sounds.js --retitle` schoon je bestaande titels opnieuw op.
+Options: `--all`, `--max-gb=N`, `--only=bbc,mixkit,archive,music,jazz,kerst,gregoriaans,commons,freesound`,
+`--drop=muziek` (throw a kind away and fetch it again), `--dir=folder`, `--dry`.
+The script is resumable: whatever is already there is skipped. Titles are cleaned up (file names, catalogue
+codes, track numbers, dates and ALL CAPS go; the original title is kept as `rawTitle`). With
+`node scripts/fetch-sounds.js --retitle` you clean up existing titles again.
 
-## Vormgeving
+## Design
 
-Hushfall heeft een eigen gezicht: een warm schemerpalet (inkt, zand, koraal), het serif-lettertype Fraunces
-(meegeleverd, OFL-licentie) voor koppen en titels, een bovenbalk met tabs, een zwevende spelercapsule en een
-achtergrond met lucht en heuvels in de kleuren van de soort die speelt. Elk geluid krijgt een eigen
-procedureel getekende illustratie (regenstrepen, golven, vlammen, boomsilhouetten, skyline, planeet, notenbalk),
-deterministisch per geluid, zodat kaarten herkenbaar blijven zonder foto's of emoji.
+Hushfall has a face of its own: a warm dusk palette (ink, sand, coral), the serif typeface Fraunces (bundled,
+OFL licence) for headings and titles, a top bar with tabs, a floating player capsule, and a background of sky
+and hills in the colours of whichever kind is playing. Every sound gets its own procedurally drawn
+illustration (rain streaks, waves, flames, tree silhouettes, skyline, planet, staff), deterministic per sound,
+so cards stay recognisable without photos or emoji.
 
-## Bestanden
+## Files
 
-- `public/`: de webapp (`index.html`, `style.css`, `app.js`, `audio.js`, `visuals.js`, `data.js`).
-- `public/library.json` en `public/sounds/`: de bibliotheek (browserversie en `npm start`).
-- `scripts/fetch-sounds.js`: geluiden ophalen en classificeren (ook als module gebruikt door de Windows-app).
-- `scripts/make-icon.js`: maakt `build/icon.ico` en `build/icon.png`.
-- `server.js`: statische server met range-requests; wordt ook door de Windows-app gebruikt.
-- `electron/main.cjs`, `electron/preload.cjs`: de Windows-app.
+- `public/`: the web app (`index.html`, `style.css`, `app.js`, `audio.js`, `visuals.js`, `data.js`).
+- `public/library.json` and `public/sounds/`: the library (browser version and `npm start`).
+- `scripts/fetch-sounds.js`: fetching and classifying sounds (also used as a module by the Windows app).
+- `scripts/make-icon.js`: makes `build/icon.ico` and `build/icon.png`.
+- `server.js`: static server with range requests; used by the Windows app as well.
+- `electron/main.cjs`, `electron/preload.cjs`: the Windows app.
+
+## A note on language
+
+The app's own interface is still in Dutch. Where this README mentions a button or a menu, the Dutch label is
+given first, with the English meaning next to it. The same goes for a handful of identifiers in the code
+(`STORE_BRONNEN`, `stemGolf`) and for the `--only` and `--drop` values of the fetch script, which name kinds in
+Dutch (`kerst`, `gregoriaans`, `muziek`).

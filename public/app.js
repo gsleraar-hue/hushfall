@@ -1,4 +1,4 @@
-// Hushfall: UI, navigatie, bibliotheek, timer en opslag van instellingen.
+// Hushfall: UI, navigation, library, timer and storing the settings.
 (function () {
   const D = window.HUSHFALL_DATA;
   const $ = (s, el = document) => el.querySelector(s);
@@ -11,7 +11,7 @@
   let currentMood = null; // sfeer van het laatst gestarte hoofdgeluid
   let activeMix = null;
 
-  // ---- Instellingen (localStorage) -------------------------------------------
+  // ---- Settings (localStorage) -----------------------------------------------
   const defaults = { volumes: { master: 0.8, main: 1, fx: 1, noise: 0.5, radio: 0.8 }, anim: true, density: 1, licht: false, resume: true, page: 'home', noise: { color: 'roze', tone: 6000, hp: 40, gain: 0.5 }, timerFade: 30, layers: [], mixerKind: 'alle' };
   let settings = defaults;
   try { settings = { ...defaults, ...JSON.parse(localStorage.getItem('hushfall') || localStorage.getItem('thrum') || localStorage.getItem('nebula') || localStorage.getItem('sfeer') || '{}') }; settings.volumes = { ...defaults.volumes, ...settings.volumes }; settings.noise = { ...defaults.noise, ...settings.noise }; } catch {}
@@ -25,12 +25,12 @@
   visuals.setEnabled(settings.anim); visuals.setDensity(settings.density * (settings.licht ? 0.5 : 1));
   window.HushfallSynth.setLicht(settings.licht);
 
-  // ---- Hulpfuncties ----------------------------------------------------------
+  // ---- Helpers ---------------------------------------------------------------
   const kindInfo = (k) => D.kinds[k] || { colors: ['#1a1f2e', '#2a3350', '#3f4f80'], accent: '#9db0e0', particles: 'dust' };
   const kindLabel = (k) => D.kindLabels[k] || library.kinds[k] || k;
   const moodLabel = (m) => D.moodLabels[m] || library.moods[m] || m;
 
-  // ---- Generatieve illustraties per soort (SVG, deterministisch per geluid) ----------
+  // ---- Generative illustrations per kind (SVG, deterministic per sound) --------------
   const rng = (seed) => { let a = (seed >>> 0) || 1; return () => { a += 0x6d2b79f5; let t = Math.imul(a ^ (a >>> 15), 1 | a); t ^= t + Math.imul(t ^ (t >>> 7), 61 | t); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; };
   const PAPER = '#f4ebdd', SAND = '#e9c79b';
   const f1 = (n) => Math.round(n * 10) / 10;
@@ -167,39 +167,39 @@
         defs += `<radialGradient id="${gloed}" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="${c2}" stop-opacity="0.85"/><stop offset="0.45" stop-color="${c2}" stop-opacity="0.3"/><stop offset="1" stop-color="${c2}" stop-opacity="0"/></radialGradient>`;
         body += `<circle cx="${f1(zx)}" cy="${f1(hz - zr * 0.15)}" r="${f1(zr * 3.4)}" fill="url(#${gloed})"/>`;
         body += dot(zx, hz - zr * 0.15, zr, c2, 0.92);
-        // strepen door de zon: breedte volgt de cirkel, dus ze steken er niet buiten
+        // streaks across the sun: the width follows the circle, so they do not stick out
         const zy = hz - zr * 0.15;
         for (let y = zy - zr * 0.7; y < zy + zr; y += 7) {
           const halve = Math.sqrt(Math.max(0, zr * zr - (y - zy) * (y - zy)));
           if (halve > 2) body += line(zx - halve, y, zx + halve, y, c0, 2.2, 0.5);
         }
         for (let i = 0; i < 60; i++) { const y = r() * (hz - 40); body += dot(r() * W, y, 0.4 + r() * 1.2, PAPER, 0.15 + r() * 0.5); }
-        // bergketens: verder weg is lichter
+        // mountain ranges: further away is lighter
         const keten = (y, hoogte, kleur, op) => {
           let d = `M0 ${H} L0 ${f1(y)}`;
           for (let x = 0; x <= W; x += 14) d += ` L${f1(x)} ${f1(y - Math.abs(Math.sin(x * 0.013 + r() * 0.4)) * hoogte * (0.5 + r() * 0.7))}`;
           body += `<path d="${d} L${W} ${H} Z" fill="${kleur}" fill-opacity="${op}"/>`;
         };
         keten(hz + 4, 26, c1, 0.75); keten(hz + 24, 34, c0, 0.9); keten(hz + 52, 40, '#05070d', 0.95);
-        // spiegeling in het water onder de horizon
+        // reflection in the water below the horizon
         body += `<rect x="0" y="${f1(hz + 82)}" width="${W}" height="${f1(H - hz - 82)}" fill="${c1}" fill-opacity="0.3"/>`;
         for (let i = 0; i < 14; i++) { const y = hz + 88 + r() * (H - hz - 92); body += line(zx - rnd0(r, 6, 34), y, zx + rnd0(r, 6, 34), y, c2, 1.6, 0.1 + r() * 0.22); }
-        // breedbeeldbalken
+        // widescreen bars
         body += `<rect x="0" y="0" width="${W}" height="22" fill="#05060a"/><rect x="0" y="${H - 22}" width="${W}" height="22" fill="#05060a"/>`;
         break;
       }
       case 'gregoriaans': { // gebrandschilderd spitsboograam met een lichtbundel in een stenen kerk
         const cx = W * (0.36 + r() * 0.12), bw = 32 + r() * 10, top = 44 + r() * 14, sy = top + 50, bot = H * 0.63;
         const vloer = H * 0.82;
-        // stenen muur: een paar horizontale voegen
+        // stone wall: a few horizontal joints
         for (let y = 22; y < vloer; y += 26 + r() * 10) body += line(0, y, W, y + rnd0(r, -3, 3), PAPER, 1, 0.04);
-        // lichtbundel die schuin op de vloer valt, met een lichtplas
+        // a shaft of light falling at an angle on the floor, with a pool of light
         body += `<path d="M${f1(cx - bw)} ${f1(sy)} L${f1(cx + bw)} ${f1(sy)} L${f1(cx + bw + 120)} ${f1(vloer)} L${f1(cx - bw + 78)} ${f1(vloer)} Z" fill="${SAND}" fill-opacity="0.09"/>`;
         body += `<ellipse cx="${f1(cx + 99)}" cy="${f1(vloer)}" rx="${f1(bw + 62)}" ry="9" fill="${SAND}" fill-opacity="0.13"/>`;
-        // de spitsboog zelf: twee bogen die in een punt samenkomen
+        // the pointed arch itself: two curves meeting at a point
         const ogief = (x0, x1, apex, y0, y1) => `M${f1(x0)} ${f1(y1)} L${f1(x0)} ${f1(y0)} Q${f1(x0)} ${f1(apex + (y0 - apex) * 0.35)} ${f1((x0 + x1) / 2)} ${f1(apex)} Q${f1(x1)} ${f1(apex + (y0 - apex) * 0.35)} ${f1(x1)} ${f1(y0)} L${f1(x1)} ${f1(y1)} Z`;
         const raam = ogief(cx - bw, cx + bw, top, sy, bot);
-        // glas: gekleurde ruitjes achter het loodwerk
+        // glass: coloured panes behind the leading
         const glas = ['#c9a227', '#8d3b3b', '#2f5d8a', '#3d6b4a', '#7a4a86'];
         body += `<path d="${raam}" fill="${SAND}" fill-opacity="0.22"/>`;
         body += `<clipPath id="${id}c"><path d="${raam}"/></clipPath><g clip-path="url(#${id}c)">`;
@@ -207,17 +207,17 @@
           body += `<rect x="${f1(x)}" y="${f1(y)}" width="14" height="14" fill="${pickR(r, glas)}" fill-opacity="${f1(0.35 + r() * 0.45)}"/>`;
         }
         body += '</g>';
-        // loodwerk en de stenen omlijsting
+        // leading and the stone surround
         for (let y = sy + 20; y < bot; y += 34) body += line(cx - bw, y, cx + bw, y, c0, 2, 0.85);
         body += line(cx, top + 12, cx, bot, c0, 2.4, 0.85);
         body += `<path d="${raam}" fill="none" stroke="${c0}" stroke-width="5" stroke-opacity="0.95"/>`;
-        // Tracering in de boogkop: een klein vierpas, zoals in gotische ramen.
+        // Tracery in the arch head: a small quatrefoil, as in gothic windows.
         const ty = top + 26;
         body += `<circle cx="${f1(cx)}" cy="${f1(ty)}" r="10" fill="none" stroke="${c0}" stroke-width="2.4"/>`;
         for (let i = 0; i < 4; i++) { const a = (i / 4) * Math.PI * 2 + Math.PI / 4; body += `<circle cx="${f1(cx + Math.cos(a) * 6)}" cy="${f1(ty + Math.sin(a) * 6)}" r="5" fill="${pickR(r, glas)}" fill-opacity="0.65" stroke="${c0}" stroke-width="1.4"/>`; }
-        // stof dat in de lichtbundel danst
+        // dust dancing in the shaft of light
         for (let i = 0; i < 34; i++) { const k = r(); body += dot(cx - bw + 20 + k * 150 + r() * 60, sy + k * (vloer - sy) * r() + 10, 0.6 + r() * 1.5, PAPER, 0.15 + r() * 0.4); }
-        // vloer en een kaars die de ruimte warm maakt
+        // floor and a candle warming the space
         body += `<rect x="0" y="${f1(vloer)}" width="${W}" height="${H - vloer}" fill="${c0}" fill-opacity="0.9"/>` + line(0, vloer, W, vloer, PAPER, 1, 0.18);
         const kx = W * (0.78 + r() * 0.1), kb = vloer - 4;
         body += `<ellipse cx="${f1(kx)}" cy="${f1(kb - 34)}" rx="16" ry="22" fill="#f6c177" fill-opacity="0.16"/>`;
@@ -231,11 +231,11 @@
     return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs>${defs}</defs><rect width="${W}" height="${H}" fill="url(#${id})"/>${body}${beweging(kind, r, W, H, c2)}</svg>`;
   }
   /**
-   * De bewegende laag over een kaartillustratie: regen die valt, damp die van de koffie komt, vonken
-   * die opstijgen. Hij staat stil tot je de kaart aanwijst (zie .beweeg in style.css), zodat een
-   * pagina vol kaarten rustig blijft en je meteen ziet waar een sfeer over gaat zodra je erheen gaat.
-   * De negatieve vertraging zet elk element op een ander punt in zijn cyclus, anders bewegen ze in
-   * de maat en dat verraadt zich meteen.
+   * The moving layer over a card illustration: rain falling, steam coming off the coffee, sparks
+   * rising. It stands still until you point at the card (see .beweeg in style.css), so a page full
+   * of cards stays calm and you see what a mood is about the moment you move towards it.
+   * The negative delay puts every element at a different point in its cycle; without that they move
+   * in step, which gives the whole thing away at once.
    */
   function beweging(kind, r, W, H, c2) {
     const el = (svg, naam, duur, vertraging) =>
@@ -255,7 +255,7 @@
         s = maak(20, () => el(stip(W * (0.28 + r() * 0.44), H * (0.62 + r() * 0.25), 1 + r() * 2.2, '#ffb057', 0.6 + r() * 0.4), 'stijg', 1.6 + r() * 1.8, r() * 3));
         break;
       case 'cafe': case 'huis':
-        // Damp van een kop koffie: smalle slierten die opstijgen, breder worden en oplossen.
+        // Steam off a cup of coffee: narrow wisps rising, widening and dissolving.
         s = maak(7, () => { const x = W / 2 + (r() - 0.5) * 70, y = H * (0.4 + r() * 0.1);
           return el(`<path d="M${f1(x)} ${f1(y)} c -8 -14 8 -20 0 -34" fill="none" stroke="${PAPER}" stroke-opacity="${f1(0.25 + r() * 0.35)}" stroke-width="${f1(1.6 + r() * 1.6)}" stroke-linecap="round"/>`, 'stijg', 3 + r() * 2.5, r() * 5); });
         break;
@@ -285,8 +285,8 @@
   const toast = (msg) => { const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.hidden = true; }, 2600); };
   const rnd = (arr) => arr[Math.floor(Math.random() * arr.length)];
   /**
-   * Kies per soort een geluid voor een mix. Hushfall's eigen geluiden krijgen ruim voorrang: ze
-   * herhalen nooit en mengen beter. Binnen de opnames hebben langere meer kans.
+   * Pick a sound per kind for a mix. Hushfall's own sounds get a good deal of priority: they
+   * never repeat and they blend better. Among the recordings, longer ones stand a better chance.
    */
   const pickKind = (kind, exclude = new Set()) => {
     let list = library.sounds.filter((s) => s.kind === kind && !exclude.has(s.id));
@@ -298,7 +298,7 @@
     for (let i = 0; i < list.length; i++) { r -= weights[i]; if (r <= 0) return list[i]; }
     return list[list.length - 1];
   };
-  /** Wissel soorten af zodat een rij divers is. */
+  /** Alternate kinds so a row is varied. */
   const interleave = (sounds) => {
     const groups = new Map();
     for (const s of sounds) { if (!groups.has(s.kind)) groups.set(s.kind, []); groups.get(s.kind).push(s); }
@@ -309,8 +309,8 @@
     return out;
   };
 
-  // ---- Bibliotheek laden ------------------------------------------------------
-  /** Hushfall's eigen, live gemaakte geluiden. Zitten altijd in de app, ook zonder gedownloade bestanden. */
+  // ---- Loading the library ----------------------------------------------------
+  /** Hushfall's own, live-made sounds. Always in the app, even without downloaded files. */
   function synthSounds() {
     if (!window.HushfallSynth) return [];
     return window.HushfallSynth.list.map((g) => ({
@@ -330,7 +330,7 @@
     renderHome(); renderMixer(); renderLibraryInfo();
   }
 
-  // ---- Navigatie ----------------------------------------------------------------
+  // ---- Navigation ---------------------------------------------------------------
   function showPage(name) {
     settings.page = name; save();
     $$('.page').forEach((p) => { p.hidden = p.dataset.page !== name; });
@@ -339,7 +339,7 @@
   }
   $$('.nav-btn').forEach((b) => b.addEventListener('click', () => showPage(b.dataset.page)));
 
-  // ---- Sferen (home) -------------------------------------------------------------
+  // ---- Moods (home) --------------------------------------------------------------
   function soundCard(s, { mix = false } = {}) {
     const el = document.createElement('button');
     el.className = 'card' + (mix ? ' mix' : '');
@@ -358,7 +358,7 @@
       $('#empty-go')?.addEventListener('click', () => showPage('settings'));
       return;
     }
-    // Mixen
+    // Mixes
     const mixes = D.mixes.filter((m) => Object.keys(m.layers).some((k) => library.sounds.some((s) => s.kind === k)));
     if (mixes.length) {
       const sec = document.createElement('section'); sec.className = 'row';
@@ -372,7 +372,7 @@
       }
       sec.appendChild(row); root.appendChild(sec);
     }
-    // Hushfall's eigen geluiden: altijd aanwezig, worden live gemaakt
+    // Hushfall's own sounds: always there, made live
     const own = library.sounds.filter((s) => s.synth);
     if (own.length) {
       const sec = document.createElement('section'); sec.className = 'row';
@@ -382,7 +382,7 @@
       for (const s of interleave(own)) { const card = soundCard(s); card.addEventListener('click', () => playMain(s)); row.appendChild(card); }
       sec.appendChild(row); root.appendChild(sec);
     }
-    // Per sfeer
+    // Per mood
     for (const mood of D.moodOrder) {
       const list = interleave(library.sounds.filter((s) => (s.moods || []).includes(mood)));
       if (!list.length) continue;
@@ -429,8 +429,8 @@
     tint(k.accent || k.colors[2], k.colors[0]);
   }
   /**
-   * Laat de hele interface meekleuren met wat er speelt. De accentkleur zit in één variabele, zodat
-   * knoppen, tabbladen en randen samen van kleur wisselen in plaats van altijd zandkleurig te blijven.
+   * Let the whole interface take on the colour of what is playing. The accent colour sits in one
+   * variable, so buttons, tabs and borders change colour together instead of staying sand forever.
    */
   function tint(accent, diep) {
     const root = document.documentElement.style;
@@ -440,7 +440,7 @@
     if (diep) root.setProperty('--k-deep', diep);
   }
 
-  // ---- Mixer -------------------------------------------------------------------
+  // ---- Mixer ---------------------------------------------------------------------
   function renderMixer() {
     const chips = $('#mixer-chips'); chips.innerHTML = '';
     const kinds = [...new Set(library.sounds.map((s) => s.kind))].sort((a, b) => kindLabel(a).localeCompare(kindLabel(b)));
@@ -509,7 +509,7 @@
   }
   $('#mixer-search').addEventListener('input', renderMixerGroups);
 
-  // ---- Ruis ---------------------------------------------------------------------
+  // ---- Noise ----------------------------------------------------------------------
   function renderNoise() {
     $('#noise-on').checked = engine.noise.on;
     const wrap = $('#noise-colors'); wrap.innerHTML = '';
@@ -531,7 +531,7 @@
   $$('#noise-tone, #noise-hp, #noise-gain').forEach((el) => el.addEventListener('change', save));
   $$('[data-noise-preset]').forEach((b) => b.addEventListener('click', () => { engine.setNoise({ ...D.noisePresets[b.dataset.noisePreset] }); renderNoise(); save(); }));
 
-  // ---- Radio --------------------------------------------------------------------
+  // ---- Radio ------------------------------------------------------------------------
   function renderRadio() {
     const grid = $('#radio-grid'); grid.innerHTML = '';
     for (const st of D.radio) {
@@ -549,7 +549,7 @@
   const norm = (c) => (c.length === 7 ? c : '#222a3a');
   function shade(hex, amt) { const n = parseInt(hex.slice(1), 16); const f = (v) => Math.max(0, Math.min(255, v + amt)); return '#' + [(n >> 16) & 255, (n >> 8) & 255, n & 255].map(f).map((v) => v.toString(16).padStart(2, '0')).join(''); }
 
-  // ---- Timer --------------------------------------------------------------------
+  // ---- Timer ------------------------------------------------------------------------
   const timer = { end: 0, iv: null, mode: 'timer', phase: 'werk', cycle: 0, fade: 30 };
   function renderTimerPresets() {
     const wrap = $('#timer-presets'); wrap.innerHTML = '';
@@ -597,7 +597,7 @@
   $('#timer-start').addEventListener('click', () => startTimer(Math.max(1, Number($('#timer-custom').value) || 45)));
   $('#timer-stop').addEventListener('click', () => stopTimer());
 
-  // ---- Instellingen -------------------------------------------------------------
+  // ---- Settings -----------------------------------------------------------------
   const busLabels = { master: 'Main volume', main: 'Moods', fx: 'Mixer layers', noise: 'Noise', radio: 'Radio' };
   function renderVolumeMixer(root) {
     root.innerHTML = '';
@@ -628,7 +628,7 @@
     toast(settings.licht ? 'Light mode on; reverb is dropped for sounds you start from now on' : 'Light mode off');
     save();
   });
-  // In de lichte modus halveren we ook de deeltjes: het tekenen deelt de thread met de notenplanner.
+  // In lite mode we halve the particles as well: drawing shares the thread with the note scheduler.
   function pasDichtheidToe() { visuals.setDensity(settings.density * (settings.licht ? 0.5 : 1)); }
 
   function renderLibraryInfo() {
@@ -702,7 +702,7 @@
     await loadLibrary();
   }
 
-  // ---- Speler -------------------------------------------------------------------
+  // ---- Player -------------------------------------------------------------------
   function updatePlayer() {
     const player = $('#player');
     const mains = engine.mainLayers(); const all = [...engine.layers.values()];
@@ -715,7 +715,7 @@
     if (engine.radio.station && mains.length) sub += ` · radio: ${engine.radio.station.name}`;
     if (engine.noise.on && (mains.length || all.length)) sub += ' · ruis';
     $('#player-title').textContent = title; $('#player-sub').textContent = sub;
-    // Speelt er een zender, dan staat er een knop om hem uit te zetten - vanaf elke pagina.
+    // While a station plays there is a button to switch it off - from every page.
     let radioUit = $('#btn-radio-uit');
     if (engine.radio.station && !radioUit) {
       radioUit = document.createElement('button');
@@ -828,7 +828,7 @@
   }
 
   // ---- Sonos --------------------------------------------------------------------------
-  // Hushfall wordt een radiozender op je netwerk; de speakers halen de audio zelf op.
+  // Hushfall becomes a radio station on your network; the speakers fetch the audio themselves.
   const stream = new window.HushfallStream(engine);
   const sonos = { groups: [], playing: new Set(), busy: false, error: null, loaded: false };
   const sonosBtn = $('#btn-sonos'), sonosPop = $('#sonos-pop');
@@ -839,7 +839,7 @@
     sonos.busy = true; renderSonos();
     const r = await window.hushfallDesktop.sonos.list();
     sonos.groups = r.groups || []; sonos.error = r.error || null; sonos.loaded = true; sonos.busy = false;
-    // Van elke groep opvragen of hij onze zender al speelt (bijvoorbeeld na herstart van de app).
+    // Ask every group whether it already plays our station (after a restart of the app, for instance).
     await Promise.all(sonos.groups.map(async (g) => {
       const s = await window.hushfallDesktop.sonos.status(g.host);
       g.volume = s.volume ?? 30;
@@ -908,15 +908,15 @@
     if (type === 'state') updateSonosButton();
   });
 
-  // Versienummer tonen in Instellingen (komt van de ingebouwde server, dus ook in de browser).
+  // Show the version number in Settings (comes from the built-in server, so in the browser too).
   fetch('version.json', { cache: 'no-cache' })
     .then((r) => r.json())
     .then((v) => { if (v.version) $('#app-version').textContent = 'versie ' + v.version; })
     .catch(() => { $('#app-version').textContent = ''; });
 
-  // Bijwerken. De app haalt een nieuwe versie zelf op de achtergrond op en installeert die bij het
-  // afsluiten; de balk hieronder is er alleen voor wie niet wil wachten. Nooit iets onderbreken:
-  // je bent aan het luisteren.
+  // Updating. The app fetches a new version in the background itself and installs it on quit;
+  // the bar below is only there for anyone who does not want to wait. Never interrupt anything:
+  // you are listening.
   if (window.hushfallDesktop?.onUpdate) {
     window.hushfallDesktop.onUpdate(({ staat, versie }) => {
       if (staat === 'gevonden') return toast(`Version ${versie} is downloading in the background`);
@@ -931,7 +931,7 @@
 
   window.hushfall = { engine, visuals, get library() { return library; } }; // voor debuggen
 
-  // ---- Start ------------------------------------------------------------------------
+  // ---- Start --------------------------------------------------------------------------
   renderNoise(); renderRadio(); renderTimerPresets(); renderVolumeMixer($('#settings-mixer')); syncVolumeUI();
   showPage(settings.page && $(`.page[data-page="${settings.page}"]`) ? settings.page : 'home');
   loadLibrary().then(() => {
@@ -940,8 +940,8 @@
       const s = first && byId.get(first.id);
       if (s) { setScene(s.kind); $('#player-title').textContent = s.title; $('#player-sub').textContent = 'Press play to pick up where you left off'; $('#player-thumb').innerHTML = art(s.kind, seedOf(s.id)); return; }
     }
-    // Nog niets gekozen: open in een van de rustige nachtelijke sferen, zodat het beginscherm ook
-    // kleur en beweging heeft in plaats van een vlakke donkere achtergrond.
+    // Nothing picked yet: open in one of the calm night-time moods, so the first screen has
+    // colour and movement too instead of a flat dark background.
     setScene(['nacht', 'ruimte', 'zee', 'gregoriaans'][Math.floor(Math.random() * 4)]);
   });
 })();

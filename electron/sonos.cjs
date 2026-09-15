@@ -1,5 +1,5 @@
-// Sonos over het lokale netwerk, zonder account of cloud: spelers vinden met SSDP en aansturen
-// met de UPnP-diensten die elke speler zelf aanbiedt op poort 1400.
+// Sonos over the local network, without an account or a cloud: find speakers with SSDP and drive
+// them with the UPnP services every speaker offers itself on port 1400.
 const dgram = require('node:dgram');
 const http = require('node:http');
 const os = require('node:os');
@@ -8,14 +8,14 @@ const SSDP_ADDR = '239.255.255.250';
 const SSDP_PORT = 1900;
 const CTRL_PORT = 1400;
 
-/** Het IPv4-adres van deze computer op het netwerk (dat adres zet de speaker in zijn stream-URL). */
+/** The IPv4 address of this computer on the network (the speaker puts that address in its stream URL). */
 function localAddress() {
   const nets = os.networkInterfaces();
   const kandidaten = [];
   for (const lijst of Object.values(nets)) for (const i of lijst || []) {
     if (i.family === 'IPv4' && !i.internal) kandidaten.push(i.address);
   }
-  // Voorkeur voor gewone thuisnetwerken boven virtuele adapters (Docker, WSL, VPN).
+  // Prefer ordinary home networks over virtual adapters (Docker, WSL, VPN).
   return kandidaten.find((a) => /^192\.168\./.test(a)) || kandidaten.find((a) => /^10\./.test(a)) || kandidaten[0] || '127.0.0.1';
 }
 
@@ -37,7 +37,7 @@ function request({ host, port = CTRL_PORT, path: p, method = 'GET', headers = {}
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const tag = (xml, naam) => { const m = xml.match(new RegExp(`<${naam}[^>]*>([\\s\\S]*?)</${naam}>`)); return m ? m[1] : ''; };
 
-/** Eén UPnP-opdracht naar een speler, bijvoorbeeld Play of SetAVTransportURI. */
+/** One UPnP command to a speaker, Play or SetAVTransportURI for instance. */
 async function soap(host, dienst, actie, args = {}) {
   const paden = {
     AVTransport: { path: '/MediaRenderer/AVTransport/Control', type: 'urn:schemas-upnp-org:service:AVTransport:1' },
@@ -57,7 +57,7 @@ async function soap(host, dienst, actie, args = {}) {
   return res.body;
 }
 
-/** Zoekt spelers met één SSDP-vraag, precies zoals de Sonos-app zelf doet. */
+/** Finds speakers with a single SSDP question, exactly the way the Sonos app does. */
 function discoverAddresses({ timeout = 2500 } = {}) {
   return new Promise((resolve) => {
     const found = new Set();
@@ -65,15 +65,15 @@ function discoverAddresses({ timeout = 2500 } = {}) {
     const msg = Buffer.from(['M-SEARCH * HTTP/1.1', `HOST: ${SSDP_ADDR}:${SSDP_PORT}`, 'MAN: "ssdp:discover"', 'MX: 1', 'ST: urn:schemas-upnp-org:device:ZonePlayer:1', '', ''].join('\r\n'));
     sock.on('message', (buf, rinfo) => { if (/ZonePlayer|Sonos/i.test(buf.toString())) found.add(rinfo.address); });
     sock.on('error', () => { try { sock.close(); } catch {} resolve([]); });
-    // Stuur de zoekvraag expliciet via het thuisnetwerk. Zonder dit kiest Windows zelf een
-    // adapter, namelijk die met de laagste metric, en bij een actieve VPN (Tailscale, WireGuard)
-    // is dat de tunnel - daar staan geen spelers, dus vindt de app niets meer.
+    // Send the search out over the home network explicitly. Without this Windows picks an adapter
+    // itself, namely the one with the lowest metric, and with a VPN up (Tailscale, WireGuard)
+    // that is the tunnel - no speakers live there, so the app finds nothing at all.
     const lokaal = localAddress();
     const start = () => {
       try { sock.setBroadcast(true); } catch {}
       try { sock.setMulticastInterface(lokaal); } catch {}
       sock.send(msg, SSDP_PORT, SSDP_ADDR);
-      setTimeout(() => sock.send(msg, SSDP_PORT, SSDP_ADDR), 600); // tweede poging, UDP mag verdwijnen
+      setTimeout(() => sock.send(msg, SSDP_PORT, SSDP_ADDR), 600); // second try, UDP is allowed to vanish
     };
     if (lokaal === '127.0.0.1') sock.bind(start);
     else sock.bind(0, lokaal, start);
@@ -81,7 +81,7 @@ function discoverAddresses({ timeout = 2500 } = {}) {
   });
 }
 
-/** Naam en model van één speler. */
+/** Name and model of one speaker. */
 async function describe(host) {
   const res = await request({ host, path: '/xml/device_description.xml' });
   return {
@@ -93,8 +93,8 @@ async function describe(host) {
 }
 
 /**
- * Alle kamers, gegroepeerd zoals in de Sonos-app. Alleen de coördinator van een groep neemt
- * opdrachten aan, dus die geven we terug als aanspreekpunt.
+ * All rooms, grouped the way the Sonos app groups them. Only the coordinator of a group accepts
+ * commands, so that is the one we hand back to talk to.
  */
 async function listGroups() {
   const hosts = await discoverAddresses();
@@ -123,14 +123,14 @@ async function listGroups() {
     });
   }
   if (groepen.length) return groepen.sort((a, b) => a.name.localeCompare(b.name));
-  // Lukt het uitlezen van de groepen niet, geef dan elke speler los terug.
+  // If reading the groups fails, hand back every speaker on its own.
   return spelers.map((s) => ({ id: s.uuid, host: s.host, model: s.model, name: s.room, rooms: [s.room] }));
 }
 
-/** Laat een groep de zender van Hushfall spelen. */
+/** Makes a group play Hushfall's station. */
 async function play(host, streamUrl, titel = 'Hushfall') {
   const meta = `<DIDL-Lite xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:upnp="urn:schemas-upnp-org:metadata-1-0/upnp/" xmlns:r="urn:schemas-rinconnetworks-com:metadata-1-0/" xmlns="urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/"><item id="-1" parentID="-1" restricted="true"><dc:title>${esc(titel)}</dc:title><upnp:class>object.item.audioItem.audioBroadcast</upnp:class><desc id="cdudn" nameSpace="urn:schemas-rinconnetworks-com:metadata-1-0/">SA_RINCON65031_</desc></item></DIDL-Lite>`;
-  // x-rincon-mp3radio: laat de speler de stream als internetradio behandelen (eindeloos, geen zoeken).
+  // x-rincon-mp3radio: makes the speaker treat the stream as internet radio (endless, no seeking).
   const uri = `x-rincon-mp3radio://${streamUrl.replace(/^https?:\/\//, '')}`;
   await soap(host, 'AVTransport', 'SetAVTransportURI', { InstanceID: 0, CurrentURI: uri, CurrentURIMetaData: meta });
   await soap(host, 'AVTransport', 'Play', { InstanceID: 0, Speed: 1 });

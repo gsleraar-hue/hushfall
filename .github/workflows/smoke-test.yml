@@ -1,16 +1,16 @@
-# Een minuutje kijken of de bodem klopt: pakketten ophalen, icoon tekenen, en
-# vertellen wat er staat. Bouwt niets. Bedoeld om te zien of een mislukking aan
-# de installatie ligt of aan het bouwen zelf.
+# A minute's look at whether the ground is solid: fetch the packages, draw the
+# icon, and report what is there. Builds nothing. Meant to tell whether a
+# failure is down to the install or to the build itself.
 #
-# Starten: tabblad Actions -> Rooktest -> Run workflow.
+# To start: Actions tab -> Smoke test -> Run workflow.
 
-name: Rooktest
+name: Smoke test
 
 on:
   workflow_dispatch:
 
 jobs:
-  kijken:
+  check:
     strategy:
       fail-fast: false
       matrix:
@@ -25,28 +25,28 @@ jobs:
         with:
           node-version: 22
 
-      - name: Wat draait hier
+      - name: What is running here
         shell: bash
         run: |
           echo "os:   $RUNNER_OS"
           echo "node: $(node --version)"
           echo "npm:  $(npm --version)"
 
-      - name: Versies gelijk?
+      - name: Versions in step?
         shell: bash
         run: |
-          node -e "const p=require('./package.json'),l=require('./package-lock.json');console.log('package.json',p.version,'| lock',l.version,'|',p.version===l.version?'gelijk':'SCHEEF')"
+          node -e "const p=require('./package.json'),l=require('./package-lock.json');console.log('package.json',p.version,'| lock',l.version,'|',p.version===l.version?'same':'OUT OF STEP')"
 
-      - name: Pakketten ophalen
+      - name: Fetch packages
         run: npm ci
 
-      - name: Staat Electron er
+      - name: Is Electron there
         shell: bash
         run: node -e "console.log('electron:', require('electron'))"
 
-      - name: Icoon tekenen
+      - name: Draw the icon
         run: node scripts/make-icon.js
 
-      - name: Wat ligt er nu
+      - name: What is there now
         shell: bash
         run: ls -la build/

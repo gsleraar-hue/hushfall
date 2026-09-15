@@ -1,8 +1,8 @@
-// Achtergrond: een schemerlucht in de kleuren van de soort, een horizon met zachte heuvels,
-// langzame Ken Burns-beweging en deeltjes: elke soort heeft zijn eigen (regen, sneeuw, stof, vuurvliegjes,
+// Background: a dusk sky in the colours of the kind, a horizon with soft hills,
+// slow Ken Burns movement and particles: every kind has its own (rain, snow, dust, fireflies,
 // bellen, bladeren, vonken, sterren, windvlagen, deining, veren, stadslichten, stoom, rook, kaarslicht, filmkorrel).
 (function () {
-  // Deze deeltjes tekenen een kleurverloop per stuk per beeld en zijn daarmee het duurst.
+  // These particles draw a gradient each, per frame, which makes them the most expensive.
   const GLOED = new Set(['kaarslicht', 'fireflies', 'lichten', 'stoom', 'rook']);
   class Visuals {
     constructor(canvas) {
@@ -13,8 +13,8 @@
       this.items = []; this.t0 = performance.now(); this.last = this.t0; this.flash = 0;
       this.hills = [0.72, 0.8, 0.88].map((base, i) => ({ base, amp: 0.05 - i * 0.012, seed: Math.random() * 100, speed: 0.004 + i * 0.003 }));
       this.resize(); window.addEventListener('resize', () => this.resize());
-      // requestAnimationFrame stopt zodra het venster verborgen of bedekt is. Een tweede, langzame
-      // klok houdt het beeld dan levend en start de vloeiende lus weer op zodra dat kan.
+      // requestAnimationFrame stops as soon as the window is hidden or covered. A second, slow
+      // clock keeps the picture alive then and restarts the smooth loop as soon as it can.
       this.raf = 0; this.lastPaint = 0;
       this.tick = (t) => { this.raf = requestAnimationFrame(this.tick); this.frame(t ?? performance.now()); };
       this.keepAlive = setInterval(() => {
@@ -41,7 +41,7 @@
       if (particles !== undefined && particles !== this.particles) { this.particles = particles; this.items = []; }
     }
     setDensity(d) { this.density = d; this.items = []; }
-    /** Extra deeltjes in de volledig-schermweergave, waar de lucht het enige is wat je ziet. */
+    /** Extra particles in full screen, where the sky is all you see. */
     setBoost(b) { if (b === this.boost) return; this.boost = b; this.items = []; }
     setEnabled(e) { this.enabled = e; this.items = []; }
 
@@ -61,13 +61,13 @@
       sky.addColorStop(0.78, rgb(mix(c2, c1, 0.3)));
       sky.addColorStop(1, rgb(c0));
       ctx.fillStyle = sky; ctx.fillRect(0, 0, w, h);
-      // zon/maan-gloed die langzaam beweegt
+      // sun/moon glow drifting slowly
       const gx = w * (0.5 + 0.35 * Math.sin(t * 0.02 * move)), gy = h * 0.62;
       const glow = ctx.createRadialGradient(gx, gy, 0, gx, gy, Math.max(w, h) * 0.45);
       glow.addColorStop(0, rgba(c2, 0.55)); glow.addColorStop(1, rgba(c2, 0));
       ctx.fillStyle = glow; ctx.fillRect(0, 0, w, h);
-      // Tweede gloed in de accentkleur, op een andere baan en met een eigen adem. Twee kleuren die
-      // langzaam langs elkaar schuiven maken het beeld levend; één vlak verloop blijft altijd hetzelfde.
+      // A second glow in the accent colour, on another path and with a breath of its own. Two colours
+      // sliding slowly past each other make the picture alive; one flat gradient always stays the same.
       const ax = w * (0.5 + 0.42 * Math.sin(t * 0.013 * move + 2.1)), ay = h * (0.34 + 0.12 * Math.sin(t * 0.009 * move));
       const ag = ctx.createRadialGradient(ax, ay, 0, ax, ay, Math.max(w, h) * 0.52);
       const puls = 0.16 + 0.07 * Math.sin(t * 0.05 * move);
@@ -97,15 +97,15 @@
         rain: 260, storm: 380, snow: 220, dust: 210, fireflies: 62, bubbles: 95, leaves: 72, embers: 130, sparkles: 120, stars: 240,
         wisps: 42, golven: 18, veren: 34, lichten: 52, stoom: 40, rook: 40, kaarslicht: 72, korrel: 330,
       };
-      // Schaal met het vensteroppervlak. De bovengrens stond op 1.4, en daardoor werd het beeld juist
-      // leger naarmate het venster groter werd: fullscreen op 2560x1440 vraagt 3.6x zoveel deeltjes
-      // om even vol te lijken. In de volledig-schermweergave komt daar nog een extra factor bij,
-      // want daar is de lucht het enige wat je ziet.
+      // Scale with the window area. The ceiling used to be 1.4, and that made the picture emptier
+      // the larger the window got: full screen at 2560x1440 needs 3.6x as many particles
+      // to look equally full. In full screen there is another factor on top of that,
+      // because there the sky is all you see.
       const vlak = Math.min(2.8, Math.max(0.55, w * h / (1280 * 800)));
-      // Plafond, zodat een groot scherm in volledig scherm met de schuif op 200% het tekenen niet
-      // laat instorten. De dichte soorten (regen, storm, korrel) lopen hier tegenaan; de rustige
-      // soorten blijven er ruim onder en schalen dus gewoon door met het oppervlak. Deeltjes met een
-      // gloed kosten per stuk het meest (een kleurverloop per deeltje per beeld), dus die eerder.
+      // A ceiling, so a large screen in full screen with the slider at 200% does not make drawing
+      // collapse. The dense kinds (rain, storm, grain) run into it; the calm
+      // kinds stay well under it and simply keep scaling with the area. Particles with a
+      // glow cost the most each (a gradient per particle per frame), so those sooner.
       const plafond = GLOED.has(type) ? 400 : 900;
       const n = Math.min(plafond, Math.round((counts[type] || 80) * this.density * this.boost * vlak));
       while (this.items.length < n) this.items.push(this.spawn(type, true));
@@ -129,7 +129,7 @@
             if (p.y > h + 10) this.items[i] = this.spawn(type); break;
           }
           case 'dust': {
-            // Stof dreef zo langzaam dat het stilstond; nu wervelt het zichtbaar mee in de lucht.
+            // Dust drifted so slowly that it stood still; now it visibly swirls along in the air.
             p.vx += Math.sin(p.life * 0.6 + p.ph) * 9 * dt; p.vy += Math.cos(p.life * 0.45 + p.ph) * 7 * dt;
             p.vx *= 0.995; p.vy *= 0.995;
             p.x += p.vx * dt; p.y += p.vy * dt;
@@ -177,19 +177,19 @@
             if (p.life > p.ttl) this.items[i] = this.spawn(type); break;
           }
           case 'stars': {
-            // Sterren stonden helemaal stil; nu drijft het veld heel traag en fonkelt het duidelijker.
+            // Stars stood completely still; now the field drifts very slowly and twinkles more clearly.
             p.x += p.vx * dt; p.y += p.vy * dt;
             if (p.x < -5) p.x = w + 5; else if (p.x > w + 5) p.x = -5;
             const a = p.a * (0.35 + 0.65 * Math.sin(p.life * p.f + p.ph) ** 2);
             ctx.fillStyle = `rgba(244,235,221,${a})`; ctx.beginPath(); ctx.arc(p.x, p.y, p.s, 0, 7); ctx.fill();
-            if (p.s > 1.3 && a > p.a * 0.85) {   // de heldere sterren krijgen een kruisje licht
+            if (p.s > 1.3 && a > p.a * 0.85) {   // the bright stars get a cross of light
               ctx.strokeStyle = `rgba(244,235,221,${a * 0.35})`; ctx.lineWidth = 0.6;
               ctx.beginPath(); ctx.moveTo(p.x - p.s * 3, p.y); ctx.lineTo(p.x + p.s * 3, p.y);
               ctx.moveTo(p.x, p.y - p.s * 3); ctx.lineTo(p.x, p.y + p.s * 3); ctx.stroke();
             }
             break;
           }
-          // Wind: lange, gebogen vlagen die door het beeld trekken en onderweg oplossen.
+          // Wind: long, curved gusts that travel through the picture and dissolve on the way.
           case 'wisps': {
             p.x += p.vx * dt; p.y += p.vy * dt + Math.sin(p.life * p.f) * 6 * dt;
             const a = p.a * Math.max(0, Math.sin(Math.PI * Math.min(1, p.life / p.ttl)));
@@ -201,7 +201,7 @@
             }
             if (p.life > p.ttl || p.x > w + p.len) this.items[i] = this.spawn(type); break;
           }
-          // Zee: brede deiningslijnen die traag over elkaar heen schuiven.
+          // Sea: broad swell lines sliding slowly over each other.
           case 'golven': {
             p.ph += p.f * dt;
             ctx.strokeStyle = rgba(ac, p.a); ctx.lineWidth = p.s;
@@ -212,7 +212,7 @@
             }
             ctx.stroke(); break;
           }
-          // Vogels: veertjes die zwevend en tollend naar beneden komen.
+          // Birds: little feathers coming down, floating and tumbling.
           case 'veren': {
             p.rot += p.vr * dt;
             p.x += (p.vx + Math.sin(p.life * p.f + p.ph) * 40) * dt;
@@ -225,7 +225,7 @@
             ctx.restore();
             if (p.y > h + 20) this.items[i] = this.spawn(type); break;
           }
-          // Stad: onscherpe lichten die langsschuiven, zoals ruiten en koplampen door een lens.
+          // City: out-of-focus lights sliding past, like windows and headlights through a lens.
           case 'lichten': {
             p.x += p.vx * dt; p.y += p.vy * dt;
             const a = p.a * (0.7 + 0.3 * Math.sin(p.life * p.f + p.ph));
@@ -234,7 +234,7 @@
             ctx.fillStyle = g; ctx.beginPath(); ctx.arc(p.x, p.y, p.s, 0, 7); ctx.fill();
             if (p.x < -p.s || p.x > w + p.s) this.items[i] = this.spawn(type); break;
           }
-          // Café: damp van kopjes die opstijgt, uitdijt en oplost.
+          // Cafe: steam rising off cups, spreading out and dissolving.
           case 'stoom': case 'rook': {
             const traag = type === 'rook' ? 0.6 : 1;
             p.y -= p.vy * dt * traag; p.x += (p.vx + Math.sin(p.life * p.f + p.ph) * 14) * dt;
@@ -248,7 +248,7 @@
             }
             if (p.life > p.ttl || p.y < -r) this.items[i] = this.spawn(type); break;
           }
-          // Kerkmuziek: warme vlokjes die boven kaarsen opstijgen en flakkeren.
+          // Church music: warm flakes rising above candles and flickering.
           case 'kaarslicht': {
             p.y -= p.vy * dt; p.x += (p.vx + Math.sin(p.life * p.f + p.ph) * 16) * dt;
             const k = Math.min(1, p.life / p.ttl);
@@ -260,7 +260,7 @@
             }
             if (p.life > p.ttl || p.y < -10) this.items[i] = this.spawn(type); break;
           }
-          // Film: korrel die per beeld verspringt, met af en toe een kras over het beeld.
+          // Film: grain that jumps every frame, with the occasional scratch across the picture.
           case 'korrel': {
             p.x += p.vx * dt; p.y += p.vy * dt;
             ctx.fillStyle = `rgba(240,235,225,${p.a * Math.random()})`;

@@ -1,5 +1,5 @@
-// AudioWorklet: leest de gemengde audio mee en stuurt die in blokken naar de MP3-worker.
-// Dit loopt op de audiothread, dus het opnemen hapert niet als de UI even druk is.
+// AudioWorklet: taps the mixed audio and sends it to the MP3 worker in blocks.
+// This runs on the audio thread, so recording does not stutter when the UI gets busy.
 class TapProcessor extends AudioWorkletProcessor {
   constructor(options) {
     super();
@@ -12,7 +12,7 @@ class TapProcessor extends AudioWorkletProcessor {
   }
   process(inputs) {
     const input = inputs[0];
-    if (!this.on) return false; // processor mag opgeruimd worden
+    if (!this.on) return false; // the processor may be cleaned up
     if (!input || !input.length) return true;
     const l = input[0], r = input.length > 1 ? input[1] : input[0];
     for (let i = 0; i < l.length; i++) {

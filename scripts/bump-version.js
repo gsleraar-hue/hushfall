@@ -1,7 +1,7 @@
 #!/usr/bin/env node
-// Verhoogt het versienummer in package.json (en package-lock.json) voor de volgende build.
-// Gebruik: node scripts/bump-version.js [patch|minor|major|1.2.3]
-// Wordt automatisch aangeroepen door `npm run dist`, zodat elke exe een eigen nummer krijgt.
+// Raises the version number in package.json (and package-lock.json) for the next build.
+// Usage: node scripts/bump-version.js [patch|minor|major|1.2.3]
+// Called automatically by `npm run dist`, so every exe gets a number of its own.
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -21,13 +21,13 @@ if (/^\d+\.\d+\.\d+$/.test(arg)) {
   if (arg === 'major') next = `${maj + 1}.0.0`;
   else if (arg === 'minor') next = `${maj}.${min + 1}.0`;
   else if (arg === 'patch') next = `${maj}.${min}.${pat + 1}`;
-  else { console.error(`Onbekend argument "${arg}". Gebruik patch, minor, major of een nummer als 1.2.3.`); process.exit(1); }
+  else { console.error(`Unknown argument "${arg}". Use patch, minor, major or a number like 1.2.3.`); process.exit(1); }
 }
 
 pkg.version = next;
 fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n');
 
-// package-lock.json bevat het nummer twee keer; houd die gelijk zodat npm niet gaat klagen.
+// package-lock.json holds the number twice; keep those in step so npm does not complain.
 const lockPath = path.join(ROOT, 'package-lock.json');
 if (fs.existsSync(lockPath)) {
   const lock = JSON.parse(fs.readFileSync(lockPath, 'utf8'));

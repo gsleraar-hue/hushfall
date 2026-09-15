@@ -1,4 +1,4 @@
-/* Hushfall: warm schemerpalet, serif-koppen, zwevende speler. */
+/* Hushfall: warm dusk palette, serif headings, floating player. */
 @font-face { font-family: "Fraunces"; font-style: normal; font-weight: 300 700; font-display: swap; src: url("fonts/fraunces-normal.woff2") format("woff2"); }
 @font-face { font-family: "Fraunces"; font-style: italic; font-weight: 300 700; font-display: swap; src: url("fonts/fraunces-italic.woff2") format("woff2"); }
 
@@ -9,7 +9,7 @@
   --muted: rgba(244, 235, 221, 0.62);
   --faint: rgba(244, 235, 221, 0.4);
   --sand: #e9c79b;
-  /* Accent volgt de soort die speelt (app.js zet --k-accent); zonder geluid het zand van het merk. */
+  /* The accent follows the kind that plays (app.js sets --k-accent); with no sound, the brand sand. */
   --accent: var(--k-accent, #e9c79b);
   --accent-rgb: var(--k-rgb, 233, 199, 155);
   --accent-soft: rgba(var(--accent-rgb), 0.18);
@@ -35,7 +35,7 @@ body {
   overflow: hidden;
   -webkit-font-smoothing: antialiased;
 }
-/* papierkorrel */
+/* paper grain */
 body::after {
   content: ""; position: fixed; inset: 0; z-index: 4; pointer-events: none; opacity: 0.07; mix-blend-mode: overlay;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
@@ -63,7 +63,7 @@ p { margin: 0; }
   transition: background 1.2s ease;
 }
 
-/* Bovenbalk */
+/* Top bar */
 .masthead { position: relative; z-index: 3; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: 0 28px; gap: 20px; }
 .brand { display: flex; align-items: baseline; gap: 12px; }
 .wordmark { font: italic 600 30px/1 var(--serif); color: var(--sand); letter-spacing: -0.01em; }
@@ -76,14 +76,14 @@ p { margin: 0; }
 .masthead-right { position: relative; display: flex; align-items: center; justify-content: flex-end; gap: 6px; }
 .masthead-right input[type="range"] { width: 110px; }
 
-/* Inhoud */
+/* Content */
 .content { position: relative; z-index: 1; overflow-y: auto; overflow-x: hidden; padding: 22px 40px 150px; scrollbar-width: thin; scrollbar-color: rgba(244,235,221,0.2) transparent; }
 .page-head { margin-bottom: 22px; max-width: 720px; }
 .page-head p { color: var(--muted); font-size: 16px; }
 .panel { background: linear-gradient(155deg, rgba(var(--accent-rgb), 0.06), transparent 55%), var(--glass); border: 1px solid var(--line); border-radius: var(--radius); padding: 24px 26px; margin-bottom: 18px; backdrop-filter: blur(12px); max-width: 880px; }
 .row-between { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
 
-/* Rijen met kaarten */
+/* Rows of cards */
 section.row { margin-bottom: 8px; }
 .row-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-top: 18px; }
 .row-head h3 { display: flex; align-items: baseline; gap: 10px; }
@@ -103,7 +103,7 @@ section.row { margin-bottom: 8px; }
 .card .art { position: absolute; inset: 0 0 74px 0; overflow: hidden; }
 .card .art svg { width: 100%; height: 100%; display: block; transition: transform 0.6s ease; }
 .card .badge { display: none; }
-/* Eigen geluiden van Hushfall krijgen een klein merkje */
+/* Hushfall's own sounds get a small mark */
 .card.own .badge { display: block; position: absolute; top: 10px; right: 10px; font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; padding: 3px 9px; border-radius: 20px; background: var(--accent-soft); border: 1px solid var(--accent-line); color: var(--accent); backdrop-filter: blur(6px); }
 .own-tag { color: var(--accent); border-bottom: 1px dotted var(--accent-line); }
 .card .label { position: absolute; left: 0; right: 0; bottom: 0; height: 74px; padding: 12px 14px; background: rgba(16, 13, 20, 0.72); backdrop-filter: blur(10px); border-top: 1px solid var(--line); }
@@ -144,7 +144,7 @@ section.row { margin-bottom: 8px; }
 .strip .vol input { flex: 1; }
 .strip .vol output { font-size: 12px; width: 36px; text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
 
-/* Schakelaar */
+/* Switch */
 .switch { display: inline-flex; align-items: center; gap: 10px; cursor: pointer; user-select: none; }
 .switch input { position: absolute; opacity: 0; width: 0; height: 0; }
 .switch .track { position: relative; width: 40px; height: 22px; border-radius: 22px; background: rgba(244,235,221,0.22); transition: background 0.2s; flex: 0 0 auto; }
@@ -155,7 +155,7 @@ section.row { margin-bottom: 8px; }
 .switch.small .track { width: 34px; height: 20px; } .switch.small .track::after { width: 14px; height: 14px; } .switch.small input:checked + .track::after { transform: translateX(14px); }
 .switch-label { font-size: 15px; }
 
-/* Sliders en knoppen */
+/* Sliders and buttons */
 .slider-row { display: grid; grid-template-columns: 190px 1fr 64px; align-items: center; gap: 14px; margin: 12px 0; }
 .slider-row span { color: var(--muted); }
 .slider-row output { text-align: right; font-variant-numeric: tabular-nums; color: var(--muted); font-size: 13px; }
@@ -196,7 +196,7 @@ section.row { margin-bottom: 8px; }
 .timer-custom select { width: auto; }
 .timer-panel .row-between { justify-content: center; }
 
-/* Instellingen */
+/* Settings */
 .lib-actions { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0; }
 .progress { position: relative; height: 24px; border-radius: 12px; background: var(--glass); overflow: hidden; margin: 10px 0; }
 .progress .bar { height: 100%; width: 0; background: linear-gradient(90deg, var(--accent), var(--coral)); transition: width 0.3s; }
@@ -212,7 +212,7 @@ code { background: rgba(244,235,221,0.1); padding: 2px 6px; border-radius: 6px; 
 .empty h2 { color: var(--paper); }
 .empty .btn { margin-top: 14px; }
 
-/* Zwevende speler */
+/* Floating player */
 .player {
   position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%); z-index: 5;
   width: min(820px, calc(100% - 40px)); height: 78px; border-radius: 44px; padding: 0 12px 0 12px;
@@ -266,11 +266,11 @@ code { background: rgba(244,235,221,0.1); padding: 2px 6px; border-radius: 6px; 
 .icon-btn.live::after { content: ""; position: absolute; top: 6px; right: 6px; width: 6px; height: 6px; border-radius: 50%; background: var(--coral); }
 .icon-btn { position: relative; }
 
-/* Volledig scherm */
+/* Full screen */
 body.immersive-on .app { opacity: 0; pointer-events: none; transition: opacity 0.5s; }
 .app { transition: opacity 0.5s; }
 .immersive { position: fixed; inset: 0; z-index: 10; display: flex; flex-direction: column; justify-content: flex-end; padding: 40px; background: linear-gradient(180deg, rgba(16,13,20,0) 55%, rgba(16,13,20,0.5)); transition: background 0.8s; }
-/* Zodra de knoppen wegvallen wordt ook de sluier lichter: dan zie je alleen nog de lucht. */
+/* Once the buttons fade out the veil lightens as well: then all you see is the sky. */
 .immersive.hide-ui { background: linear-gradient(180deg, rgba(16,13,20,0) 70%, rgba(16,13,20,0.22)); }
 .immersive.hide-ui .immersive-row, .immersive.hide-ui .close, .immersive.hide-ui .immersive-sub { opacity: 0; transition: opacity 0.6s; }
 .immersive.hide-ui { cursor: none; }
@@ -306,10 +306,10 @@ body.immersive-on .app { opacity: 0; pointer-events: none; transition: opacity 0
 }
 @media (prefers-reduced-motion: reduce) { .card, .card:hover, .card .art svg { transition: none; transform: none; } .player.playing .thumb { animation: none; } }
 
-/* Bewegende laag over de kaartillustraties (zie beweging() in app.js). Hij staat stil zolang je
-   niets aanwijst, zodat een pagina vol kaarten rustig blijft; zodra je een sfeer aanwijst zie je
-   meteen waar hij over gaat: regen die valt, damp die van de koffie komt, vonken die opstijgen.
-   Het draaiende plaatje in de speler beweegt altijd mee met wat er speelt. */
+/* Moving layer over the card illustrations (see beweging() in app.js). It stands still as long as you
+   point at nothing, so a page full of cards stays calm; point at a mood and you see straight away
+   what it is about: rain falling, steam coming off the coffee, sparks rising.
+   The turning picture in the player always moves along with whatever is playing. */
 .beweeg > * { animation-iteration-count: infinite; animation-timing-function: linear; animation-play-state: paused; will-change: transform, opacity; }
 .card:hover .beweeg > *, .card:focus-visible .beweeg > *, .card.playing .beweeg > *,
 .player.playing .thumb .beweeg > *, .immersive .beweeg > * { animation-play-state: running; }
@@ -320,8 +320,8 @@ body.immersive-on .app { opacity: 0; pointer-events: none; transition: opacity 0
 @keyframes twinkel { 0%, 100% { opacity: 0.12; } 50% { opacity: 1; } }
 @keyframes zweef  { 0% { transform: translate(0, 0); } 33% { transform: translate(7px, -11px); } 66% { transform: translate(-6px, -5px); } 100% { transform: translate(0, 0); } }
 
-/* Melding dat een nieuwe versie klaarstaat. Boven in beeld, buiten de speler om, en nooit modaal:
-   bijwerken mag nooit onderbreken waar je naar aan het luisteren bent. */
+/* Notice that a new version is ready. Top of the screen, clear of the player, and never modal:
+   updating must never interrupt whatever you are listening to. */
 .update-bar {
   position: fixed; top: 16px; left: 50%; transform: translateX(-50%); z-index: 21;
   display: flex; align-items: center; gap: 12px; padding: 10px 12px 10px 18px; border-radius: 40px;
@@ -331,7 +331,7 @@ body.immersive-on .app { opacity: 0; pointer-events: none; transition: opacity 0
 }
 .update-bar .btn { padding: 7px 14px; font-size: 13px; }
 
-/* de knop "radio uit" in de speler; alleen zichtbaar als er een zender speelt */
+/* the "radio off" button in the player; only visible while a station is playing */
 .radio-uit {
   margin-left: 10px;
   padding: 4px 10px;

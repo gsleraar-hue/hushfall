@@ -1,10 +1,10 @@
-# Bouwt Hushfall en zet de bestanden als release op GitHub. De app in het veld kijkt daar zelf naar
-# en werkt zichzelf bij. Draait bij een tag (v1.0.11) of handmatig via de Actions-tab.
+# Builds Hushfall and puts the files on GitHub as a release. The app out in the field watches that
+# spot itself and updates on its own. Runs on a tag (v1.0.11) or by hand from the Actions tab.
 #
-# Het bouwen en het publiceren zijn met opzet gescheiden. Liet je electron-builder zelf publiceren,
-# dan maakte hij per bestand een release aan als die er nog niet stond - en omdat hij de bestanden
-# tegelijk uploadt, ontstonden er twee releases met hetzelfde label, elk met de helft erin. Nu
-# bouwen de taken alleen, bewaren ze wat ze maken, en zet een laatste taak alles in een keer neer.
+# Building and publishing are separated on purpose. If you let electron-builder publish, it created
+# a release per file whenever one was not there yet - and because it uploads the files in parallel,
+# you ended up with two releases carrying the same label, each holding half of it. Now the jobs only
+# build and keep what they made, and one last job puts everything in place in one go.
 name: Release
 
 on:
@@ -13,7 +13,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write # nodig om een release aan te maken en de bestanden te uploaden
+  contents: write # needed to create a release and upload the files
 
 jobs:
   windows:
@@ -24,8 +24,8 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      # Electron zelf (ruim 100 MB per architectuur) komt van een server die
-      # af en toe een 504 geeft. Wat al eens is opgehaald, blijft hier liggen.
+      # Electron itself (over 100 MB per architecture) comes from a server that
+      # hands out the odd 504. Whatever was fetched once stays here.
       - uses: actions/cache@v5
         with:
           path: |
@@ -33,33 +33,33 @@ jobs:
             ~/AppData/Local/electron-builder/Cache
           key: electron-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
       - run: npm ci
-      # Geen bump hier: het versienummer in package.json is leidend en staat al in de tag.
-      - name: Bouwen (met herkansing bij een haperende download)
+      # No bump here: the version in package.json leads and is already in the tag.
+      - name: Build (with another go at a stalling download)
         shell: bash
         run: |
-          for poging in 1 2 3; do
+          for attempt in 1 2 3; do
             npx electron-builder --win --publish never && exit 0
-            echo "poging $poging strandde - even wachten en opnieuw"
+            echo "attempt $attempt stalled - waiting, then trying again"
             sleep 30
           done
           exit 1
-      - name: Wat is er gemaakt
+      - name: What came out
         if: always()
         shell: bash
-        run: ls -la dist/ || echo "geen dist-map"
+        run: ls -la dist/ || echo "no dist folder"
       - uses: actions/upload-artifact@v7
         with:
-          name: bouwsel-windows
+          name: build-windows
           path: |
             dist/*.exe
             dist/*.blockmap
             dist/latest.yml
           if-no-files-found: error
 
-  # De Mac-versie. GitHub heeft Macs staan, dus een eigen Mac is niet nodig. De app wordt ad-hoc
-  # ondertekend (zie build/na-verpakken.cjs): gratis, en genoeg om te mogen starten op Apple Silicon.
-  # Een echte notarisatie vraagt een Apple-account van $99 per jaar; zonder dat geef je de eerste
-  # keer zelf toestemming via Systeeminstellingen > Privacy en beveiliging.
+  # The Mac version. GitHub keeps Macs around, so you do not need one of your own. The app is
+  # ad-hoc signed (see build/after-pack.cjs): free, and enough to be allowed to start on Apple
+  # Silicon. Real notarisation needs an Apple account at $99 a year; without it you grant permission
+  # yourself the first time through System Settings > Privacy & Security.
   mac:
     runs-on: macos-latest
     steps:
@@ -68,8 +68,8 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      # Electron zelf (ruim 100 MB per architectuur) komt van een server die
-      # af en toe een 504 geeft. Wat al eens is opgehaald, blijft hier liggen.
+      # Electron itself (over 100 MB per architecture) comes from a server that
+      # hands out the odd 504. Whatever was fetched once stays here.
       - uses: actions/cache@v5
         with:
           path: |
@@ -78,26 +78,26 @@ jobs:
           key: electron-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
       - run: npm ci
       - run: node scripts/make-icon.js
-      - name: Bouwen (met herkansing bij een haperende download)
+      - name: Build (with another go at a stalling download)
         shell: bash
         run: |
-          for poging in 1 2 3; do
+          for attempt in 1 2 3; do
             npx electron-builder --mac --publish never && exit 0
-            echo "poging $poging strandde - even wachten en opnieuw"
+            echo "attempt $attempt stalled - waiting, then trying again"
             sleep 30
           done
           exit 1
         env:
-          # Zonder Apple-certificaat valt er niets te ondertekenen met een identiteit; we doen het
-          # zelf ad-hoc na het inpakken. Laat je dit weg, dan gaat electron-builder alsnog zoeken.
+          # With no Apple certificate there is no identity to sign with; we do it ad-hoc ourselves
+          # after packing. Leave this out and electron-builder goes looking for one anyway.
           CSC_IDENTITY_AUTO_DISCOVERY: false
-      - name: Wat is er gemaakt
+      - name: What came out
         if: always()
         shell: bash
-        run: ls -la dist/ || echo "geen dist-map"
+        run: ls -la dist/ || echo "no dist folder"
       - uses: actions/upload-artifact@v7
         with:
-          name: bouwsel-mac
+          name: build-mac
           path: |
             dist/*.dmg
             dist/*.zip
@@ -105,10 +105,10 @@ jobs:
             dist/latest-mac.yml
           if-no-files-found: error
 
-  # Het MSIX-pakket voor de Microsoft Store. Bewust een aparte taak: dit pakket werkt zichzelf niet
-  # bij (dat doet de Store) en haalt geen geluiden op bij bronnen die commercieel gebruik verbieden.
-  # De runner van GitHub heeft de Windows SDK al staan, dus makeappx.exe is daar beschikbaar;
-  # op een gewone werkplek moet je die SDK eerst zelf installeren.
+  # The MSIX package for the Microsoft Store. A separate job on purpose: this package does not
+  # update itself (the Store does that) and does not fetch sounds from sources that forbid
+  # commercial use. The GitHub runner already has the Windows SDK, so makeappx.exe is available
+  # there; on an ordinary workstation you have to install that SDK yourself first.
   store:
     runs-on: windows-latest
     steps:
@@ -120,28 +120,28 @@ jobs:
       - run: npm ci
       - run: node scripts/make-icon.js
       - run: npx electron-builder --win appx --publish never
-      # Het pakket wordt niet gepubliceerd maar als bestand bewaard: inleveren bij de Store doe je
-      # zelf via Partner Center, en daar hoort een handmatige controle bij.
+      # The package is not published but kept as a file: submitting to the Store is something you
+      # do yourself through Partner Center, and that comes with a manual review.
       - uses: actions/upload-artifact@v7
         with:
           name: hushfall-msix
           path: dist/*.appx
 
-  # Een taak, een release. Hier komt alles samen wat Windows en Mac hebben gemaakt.
-  uitgeven:
+  # One job, one release. This is where everything Windows and Mac made comes together.
+  publish:
     needs: [windows, mac]
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v7
         with:
-          pattern: bouwsel-*
+          pattern: build-*
           merge-multiple: true
-          path: uitgifte
-      - name: Wat gaat eruit
-        run: ls -la uitgifte/
+          path: release-files
+      - name: What is going out
+        run: ls -la release-files/
       - uses: softprops/action-gh-release@v3
         with:
-          files: uitgifte/*
+          files: release-files/*
           draft: false
           generate_release_notes: true

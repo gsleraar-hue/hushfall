@@ -1,6 +1,6 @@
-// Kleine statische server zonder dependencies. Wordt gebruikt voor lokaal ontwikkelen
-// (node server.js) en door de Windows-app (Electron laadt de pagina via deze server,
-// zodat fetch/Web Audio precies zo werken als in de browser).
+// A small static server without dependencies. Used for local development
+// (node server.js) and by the Windows app (Electron loads the page through this server,
+// so fetch and Web Audio work exactly as they do in the browser).
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(HERE, 'public');
-// Versienummer uit package.json, zodat de app kan tonen welke versie draait.
+// Version number from package.json, so the app can show which version is running.
 const VERSION = (() => {
   try { return JSON.parse(fs.readFileSync(path.join(HERE, 'package.json'), 'utf8')).version || '0.0.0'; }
   catch { return '0.0.0'; }
@@ -25,12 +25,12 @@ const MIME = {
  * @param {object} o
  * @param {number} o.port  0 = willekeurige vrije poort
  * @param {string} o.host
- * @param {string} [o.libraryDir]  map met library.json en sounds/; standaard public/ zelf.
+ * @param {string} [o.libraryDir]  folder holding library.json and sounds/; public/ itself by default.
  *   /library.json en /sounds/* worden eerst hier gezocht, daarna in public/.
  */
 /**
- * Verdeelt de live MP3-stream: de app duwt stukjes erin, luisteraars (Sonos) halen ze op.
- * Er wordt een klein stukje bewaard zodat een speler direct geluid heeft bij verbinden.
+ * Hands out the live MP3 stream: the app pushes chunks in, listeners (Sonos) pull them out.
+ * A small piece is kept so a speaker has sound the moment it connects.
  */
 export function createStreamHub({ preroll = 48 * 1024 } = {}) {
   const clients = new Set();
@@ -41,7 +41,7 @@ export function createStreamHub({ preroll = 48 * 1024 } = {}) {
       if (!chunk || !chunk.length) return;
       recent = Buffer.concat([recent, chunk]).subarray(-preroll);
       for (const res of clients) {
-        // Loopt een speler achter, dan slaan we stukjes over in plaats van geheugen te laten groeien.
+        // If a speaker falls behind we skip chunks rather than let memory grow.
         if (res.writableLength > 512 * 1024) continue;
         res.write(chunk);
       }
@@ -65,13 +65,13 @@ export function createStreamHub({ preroll = 48 * 1024 } = {}) {
 }
 
 /**
- * Zender voor het lokale netwerk. Biedt alleen /stream.mp3 aan, niets anders, zodat de rest van
- * de app (bibliotheek, bestanden) niet vanaf het netwerk te bereiken is.
+ * Station for the local network. Serves nothing but /stream.mp3, so the rest of the app
+ * (library, files) cannot be reached from the network.
  */
 export function startStreamServer({ port = 34872, host = '0.0.0.0', hub }) {
   const server = http.createServer((req, res) => {
     const rel = new URL(req.url, 'http://x').pathname;
-    if (rel !== '/stream.mp3' && rel !== '/') { res.writeHead(404, { 'Content-Type': 'text/plain' }); return res.end('Niet gevonden'); }
+    if (rel !== '/stream.mp3' && rel !== '/') { res.writeHead(404, { 'Content-Type': 'text/plain' }); return res.end('Not found'); }
     if (req.method === 'HEAD') { res.writeHead(200, { 'Content-Type': 'audio/mpeg' }); return res.end(); }
     if (req.method !== 'GET') { res.writeHead(405); return res.end(); }
     hub.subscribe(res);
@@ -84,7 +84,7 @@ export function startStreamServer({ port = 34872, host = '0.0.0.0', hub }) {
 }
 
 export function startServer({ port = 0, host = '127.0.0.1', libraryDir = null, hub = null } = {}) {
-  // libraryDir mag een string zijn of een functie die de actuele map teruggeeft (de app kan wisselen).
+  // libraryDir may be a string or a function returning the current folder (the app can switch).
   const currentLib = () => { const d = typeof libraryDir === 'function' ? libraryDir() : libraryDir; return d ? path.resolve(d) : null; };
   const server = http.createServer((req, res) => {
     const url = new URL(req.url, 'http://x');
@@ -94,7 +94,7 @@ export function startServer({ port = 0, host = '127.0.0.1', libraryDir = null, h
       res.writeHead(200, { 'Content-Type': MIME['.json'], 'Cache-Control': 'no-cache' });
       return res.end(JSON.stringify({ version: VERSION }));
     }
-    // De app levert hier de gecodeerde audio aan; alleen vanaf deze computer.
+    // The app delivers the encoded audio here; only from this computer.
     if (rel === '/stream/push') {
       const local = /^(::1|::ffff:127\.0\.0\.1|127\.0\.0\.1)$/.test(req.socket.remoteAddress || '');
       if (!hub || !local || req.method !== 'POST') { res.writeHead(403); return res.end(); }
@@ -116,7 +116,7 @@ export function startServer({ port = 0, host = '127.0.0.1', libraryDir = null, h
       }
     }
     fs.stat(file, (err, st) => {
-      if (err || !st.isFile()) { res.writeHead(404, { 'Content-Type': 'text/plain' }); return res.end('Niet gevonden'); }
+      if (err || !st.isFile()) { res.writeHead(404, { 'Content-Type': 'text/plain' }); return res.end('Not found'); }
       const ext = path.extname(file).toLowerCase();
       const headers = {
         'Content-Type': MIME[ext] || 'application/octet-stream',
@@ -151,7 +151,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.a
   const lan = process.argv.includes('--lan');
   const port = Number(portArg ? portArg.split('=')[1] : process.env.PORT || 8790);
   startServer({ port, host: lan ? '0.0.0.0' : '127.0.0.1' }).then(({ port }) => {
-    console.log(`Hushfall draait op http://127.0.0.1:${port}`);
+    console.log(`Hushfall is running at http://127.0.0.1:${port}`);
     if (lan) {
       for (const ifs of Object.values(os.networkInterfaces())) for (const i of ifs) {
         if (i.family === 'IPv4' && !i.internal) console.log(`  op je telefoon: http://${i.address}:${port}`);
