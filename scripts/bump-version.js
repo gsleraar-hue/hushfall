@@ -36,4 +36,4 @@ if (fs.existsSync(lockPath)) {
   fs.writeFileSync(lockPath, JSON.stringify(lock, null, 2) + '\n');
 }
 
-console.log(`Versie ${old} -> ${next}`);
+console.log(`Version ${old} -> ${next}`);
