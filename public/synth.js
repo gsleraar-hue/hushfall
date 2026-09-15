@@ -31,10 +31,38 @@
 
   // ---- Scheduler: calls fn(t) with audio time, well ahead, so a hidden window keeps running too --
   class Sched {
-    constructor(ctx) { this.ctx = ctx; this.tasks = []; this.iv = setInterval(() => this.tick(), 200); }
+    constructor(ctx) { this.ctx = ctx; this.tasks = []; this.queued = []; this.iv = setInterval(() => this.tick(), 100); }
     every(gap, fn, delay = 0.05) { const task = { t: this.ctx.currentTime + delay, gap, fn }; this.tasks.push(task); this.tick(); return task; }
-    tick() { const horizon = this.ctx.currentTime + 1.8; for (const task of this.tasks) { let guard = 0; while (task.t < horizon && guard++ < 400) { try { task.fn(task.t); } catch (e) { /* stil */ } task.t += Math.max(0.004, typeof task.gap === 'function' ? task.gap(task.t) : task.gap); } } }
-    stop() { clearInterval(this.iv); this.tasks = []; }
+    /**
+     * Queue one note instead of building it right away. Some parts are written a whole bar at a
+     * time — a jazz bar is comping, walking bass and a solo phrase together, which measured around
+     * 350 audio nodes created inside a single 200 ms window while the median window was zero. The
+     * audio thread trips over a spike like that. Queued events are built shortly before they sound,
+     * a handful per tick, and since every note keeps its own absolute time the rhythm is unchanged.
+     */
+    queue(t, fn) { this.queued.push({ t, fn }); }
+    tick() {
+      const horizon = this.ctx.currentTime + 1.8;
+      for (const task of this.tasks) {
+        let guard = 0;
+        while (task.t < horizon && guard++ < 400) {
+          try { task.fn(task.t); } catch (e) { /* stil */ }
+          task.t += Math.max(0.004, typeof task.gap === 'function' ? task.gap(task.t) : task.gap);
+        }
+      }
+      // Whatever is about to sound gets built regardless, so a note is never late; the rest is
+      // spread over the coming ticks until this tick's budget runs out. The budget counts events,
+      // not nodes, and one event can be a dozen nodes — so keep it low. A bar is planned about two
+      // seconds ahead, which is twenty ticks to spread it over.
+      const now = this.ctx.currentTime;
+      let budget = 8;
+      if (this.queued.length > 1) this.queued.sort((a, b) => a.t - b.t);
+      while (this.queued.length && (this.queued[0].t < now + 0.15 || (budget > 0 && this.queued[0].t < now + 0.7))) {
+        const e = this.queued.shift(); budget--;
+        try { e.fn(e.t); } catch (err) { /* stil */ }
+      }
+    }
+    stop() { clearInterval(this.iv); this.tasks = []; this.queued = []; }
   }
 
   // ---- Building blocks ---------------------------------------------------------------
@@ -953,16 +981,17 @@
       for (const h of hits) {
         const tt = t + h * beat + rnd(-0.012, 0.012);
         const dur = feel === 'bossa' ? beat * 1.2 : rnd(1.1, 2.1);
-        chord.forEach((n, i) => compVoice(tt + i * rnd(0.003, 0.018), n, dur, (0.04 + 0.02 * R()) * (feel === 'ballad' ? 1.2 : 1), (i / chord.length - 0.5) * 0.8));
+        chord.forEach((n, i) => { const nt = tt + i * rnd(0.003, 0.018), g = (0.04 + 0.02 * R()) * (feel === 'ballad' ? 1.2 : 1), p = (i / chord.length - 0.5) * 0.8; sched.queue(nt, () => compVoice(nt, n, dur, g, p)); });
       }
       // Bass: root, then fifth or a passing note towards the next chord.
       const laag = basis - 24 + (basis - 24 < 33 ? 12 : 0);
       const volgend = root + prog[bar % prog.length][0] - 24;
-      if (feel === 'bossa') { uprightNote(ctx, bus, { t, freq: midi(laag), dur: beat * 1.4, gain: 0.19 * bassLevel }); uprightNote(ctx, bus, { t: t + beat * 1.5, freq: midi(laag + 7), dur: beat * 1.2, gain: 0.15 * bassLevel }); uprightNote(ctx, bus, { t: t + beat * 2.5, freq: midi(laag), dur: beat, gain: 0.16 * bassLevel }); }
-      else if (feel === 'ballad') { uprightNote(ctx, bus, { t, freq: midi(laag), dur: beat * 2, gain: 0.18 * bassLevel }); uprightNote(ctx, bus, { t: t + beat * 2, freq: midi(laag + 7), dur: beat * 2, gain: 0.14 * bassLevel }); }
+      const bas = (bt, note, dur, gain) => sched.queue(bt, () => uprightNote(ctx, bus, { t: bt, freq: midi(note), dur, gain }));
+      if (feel === 'bossa') { bas(t, laag, beat * 1.4, 0.19 * bassLevel); bas(t + beat * 1.5, laag + 7, beat * 1.2, 0.15 * bassLevel); bas(t + beat * 2.5, laag, beat, 0.16 * bassLevel); }
+      else if (feel === 'ballad') { bas(t, laag, beat * 2, 0.18 * bassLevel); bas(t + beat * 2, laag + 7, beat * 2, 0.14 * bassLevel); }
       else for (let b = 0; b < 4; b++) { // wandelende bas
         const stap = b === 0 ? 0 : b === 3 ? (volgend > laag ? -1 : 1) * pick([1, 2]) : pick([0, 2, 3, 4, 5, 7, 7, 9]);
-        uprightNote(ctx, bus, { t: t + b * beat, freq: midi(laag + (b === 3 ? 12 + stap : stap)), dur: beat * 0.92, gain: (b % 2 ? 0.15 : 0.19) * bassLevel });
+        bas(t + b * beat, laag + (b === 3 ? 12 + stap : stap), beat * 0.92, (b % 2 ? 0.15 : 0.19) * bassLevel);
       }
       // Solo: phrases of a few notes, with silences in between.
       if (lead !== 'none' && t > leadTot && R() < leadDensity) {
@@ -978,10 +1007,12 @@
           const doel = dichtbij.reduce((a, b) => (Math.abs(b - vorige) < Math.abs(a - vorige) && b !== vorige ? b : a), dichtbij[0]);
           const noot = R() < 0.65 ? doel : pick(dichtbij);
           const volg = i < n - 1 ? midi(noot + pick([-2, -1, 1, 2])) : null;
-          if (lead === 'sax') reedNote(ctx, bus, { t: tt, freq: midi(noot), next: volg, dur: stapDuur * rnd(0.7, 1.05), gain: 0.085 * rnd(0.85, 1.15), pan });
-          else if (lead === 'vibes') vibeNote(ctx, bus, { t: tt, freq: midi(noot), gain: 0.075, pan, dur: rnd(1.4, 2.6) });
-          else if (lead === 'grand') { grandNote(ctx, bus, { t: tt, freq: midi(noot), gain: 0.08, pan, dur: rnd(1.8, 3.2) }); if (R() < 0.3) grandNote(ctx, bus, { t: tt + rnd(0.01, 0.04), freq: midi(noot - pick([3, 4, 5, 7])), gain: 0.045, pan, dur: rnd(1.4, 2.4) }); }
-          else nylonNote(ctx, bus, { t: tt, freq: midi(noot), gain: 0.07, pan, dur: rnd(0.8, 1.6) });
+          const nt = tt, nn = noot;
+          if (lead === 'sax') { const d = stapDuur * rnd(0.7, 1.05), g = 0.085 * rnd(0.85, 1.15); sched.queue(nt, () => reedNote(ctx, bus, { t: nt, freq: midi(nn), next: volg, dur: d, gain: g, pan })); }
+          else if (lead === 'vibes') { const d = rnd(1.4, 2.6); sched.queue(nt, () => vibeNote(ctx, bus, { t: nt, freq: midi(nn), gain: 0.075, pan, dur: d })); }
+          else if (lead === 'grand') { const d = rnd(1.8, 3.2), tweede = R() < 0.3 ? { t: nt + rnd(0.01, 0.04), n: nn - pick([3, 4, 5, 7]), d: rnd(1.4, 2.4) } : null;
+            sched.queue(nt, () => { grandNote(ctx, bus, { t: nt, freq: midi(nn), gain: 0.08, pan, dur: d }); if (tweede) grandNote(ctx, bus, { t: tweede.t, freq: midi(tweede.n), gain: 0.045, pan, dur: tweede.d }); }); }
+          else { const d = rnd(0.8, 1.6); sched.queue(nt, () => nylonNote(ctx, bus, { t: nt, freq: midi(nn), gain: 0.07, pan, dur: d })); }
           vorige = noot; tt += stapDuur;
         }
         leadTot = tt + rnd(1, 4) * beat; // even zwijgen na de frase
@@ -1785,11 +1816,11 @@
       burst(ctx, out, { t, dur: rnd(0.03, 0.07), color: 'white', type: 'bandpass', freq: rnd(900, 2200), Q: 1.4, gain: 0.05 * kracht, attack: 0.002, pan });
     };
     // Trot: two bells per beat, hoofbeats in pairs.
+    // A handful of bells is five nodes each, so two beats at once came to hundreds in one go. The
+    // scheduler builds each one just before it sounds; the timing is unchanged.
     sched.every(() => beat * 2, (t) => {
-      rinkel(t, 1, -0.1); rinkel(t + beat * 0.5, 0.55, 0.15);
-      rinkel(t + beat, 0.85, 0.1); rinkel(t + beat * 1.5, 0.5, -0.15);
-      hoef(t, 1, -0.2); hoef(t + beat * 0.42, 0.7, 0.1);
-      hoef(t + beat, 0.9, 0.2); hoef(t + beat * 1.45, 0.65, -0.1);
+      for (const [tt, k, p] of [[t, 1, -0.1], [t + beat * 0.5, 0.55, 0.15], [t + beat, 0.85, 0.1], [t + beat * 1.5, 0.5, -0.15]]) sched.queue(tt, () => rinkel(tt, k, p));
+      for (const [tt, k, p] of [[t, 1, -0.2], [t + beat * 0.42, 0.7, 0.1], [t + beat, 0.9, 0.2], [t + beat * 1.45, 0.65, -0.1]]) sched.queue(tt, () => hoef(tt, k, p));
     });
     // A church bell in the distance now and then. The reverb sits outside the scheduler: it is the most expensive node.
     const verte = reverb(ctx, out, 'irLong', 0.7);
