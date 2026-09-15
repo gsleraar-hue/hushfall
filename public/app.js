@@ -709,7 +709,7 @@
     let title = 'Nothing selected', sub = 'Pick a mood to begin', kind = null, seed = 3;
     if (activeMix && mains.length) { title = activeMix.title; sub = mains.map((l) => l.sound.title).join(' + '); kind = mains[0].sound.kind; seed = seedOf(mains[0].sound.id); }
     else if (mains.length) { const s = mains[0].sound; title = s.title; sub = kindLabel(s.kind) + (all.length > 1 ? ` · ${all.length} lagen` : ''); kind = s.kind; seed = seedOf(s.id); }
-    else if (engine.radio.station) { title = engine.radio.station.name; sub = engine.radio.playing ? engine.radio.station.genre : 'Verbinden…'; kind = 'ruimte'; }
+    else if (engine.radio.station) { title = engine.radio.station.name; sub = engine.radio.playing ? engine.radio.station.genre : 'Connecting…'; kind = 'ruimte'; }
     else if (all.length) { title = all.length === 1 ? all[0].sound.title : `${all.length} lagen`; sub = all.map((l) => kindLabel(l.sound.kind)).filter((v, i, a) => a.indexOf(v) === i).join(', '); kind = all[0].sound.kind; seed = seedOf(all[0].sound.id); }
     else if (engine.noise.on) { title = 'Noise'; sub = (D.noiseColors.find((c) => c.id === engine.noise.color)?.label || '') + ' noise'; kind = 'wind'; }
     if (engine.radio.station && mains.length) sub += ` · radio: ${engine.radio.station.name}`;
@@ -815,8 +815,8 @@
   engine.on((type, data) => {
     if (type === 'state' || type === 'layers' || type === 'radio' || type === 'noise') updatePlayer();
     if (type === 'layers') { if (settings.mixerKind === 'actief') renderMixerGroups(); }
-    if (type === 'radio-error') { toast(`${data.name}: ${data.uitleg}` + (data.geprobeerd > 1 ? ` (${data.geprobeerd} adressen geprobeerd)` : '')); renderRadio(); }
-    if (type === 'layer-error') { toast(`Kan ${data.title} niet afspelen`); engine.removeLayer(data.id); }
+    if (type === 'radio-error') { toast(`${data.name}: ${data.uitleg}` + (data.geprobeerd > 1 ? ` (${data.geprobeerd} addresses tried)` : '')); renderRadio(); }
+    if (type === 'layer-error') { toast(`Cannot play ${data.title}`); engine.removeLayer(data.id); }
     if (type === 'volumes') syncVolumeUI();
   });
   if ('mediaSession' in navigator) {
@@ -883,12 +883,12 @@
   }
   async function toggleSonos(host, aan) {
     if (aan) {
-      if (!stream.active && !(await stream.start())) return toast('Uitzenden lukt niet op deze computer');
+      if (!stream.active && !(await stream.start())) return toast('Broadcasting does not work on this computer');
       if (!engine.playing && engine.hasContent()) await engine.play();
       const r = await window.hushfallDesktop.sonos.play(host);
       if (r.error) { toast(`Sonos: ${r.error}`); return renderSonos(); }
       sonos.playing.add(host);
-      toast('Speelt nu ook op je Sonos');
+      toast('Now playing on your Sonos as well');
     } else {
       await window.hushfallDesktop.sonos.stop(host);
       sonos.playing.delete(host);
@@ -903,7 +903,7 @@
   });
   document.addEventListener('click', (e) => { if (!sonosPop.hidden && !sonosPop.contains(e.target) && e.target !== sonosBtn) sonosPop.hidden = true; });
   stream.on((type, data) => {
-    if (type === 'error') toast('Uitzenden: ' + data);
+    if (type === 'error') toast('Broadcast: ' + data);
     if (type === 'stats') updateSonosStatus();
     if (type === 'state') updateSonosButton();
   });

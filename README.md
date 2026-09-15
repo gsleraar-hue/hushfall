@@ -91,7 +91,7 @@ npm run dist           # bump the version by one, then build the installer and p
 
 `npm run dist` first raises the patch number in `package.json` and puts it in the file names, so every build
 has its own version: `Hushfall Setup 1.0.1.exe` and `Hushfall-portable-1.0.1.exe`. The version also shows at
-the bottom of **Instellingen** (Settings) in the app.
+the bottom of **Settings** in the app.
 
 ```bash
 npm run bump minor     # 1.0.4 -> 1.1.0 (or: major, patch, or a number like 2.0.0)
@@ -104,7 +104,7 @@ npm run release        # bump the version, build, and put it on GitHub as a rele
 The app updates itself. Eight seconds after starting, and every six hours after that, it checks whether there
 is a newer release on GitHub, fetches it in the background and installs it once you quit Hushfall. So you do
 not have to uninstall the previous version, and updating never interrupts whatever you are listening to. When
-a version is ready, a bar appears at the top with **Nu herstarten** (Restart now) for anyone who does not want
+a version is ready, a bar appears at the top with **Restart now** for anyone who does not want
 to wait. The downloaded library lives in your user folder and simply stays put across updates.
 
 Publishing can be done by hand with `npm run release` (which needs a `GH_TOKEN` in the environment), or by
@@ -159,19 +159,18 @@ That is why all impulse responses are mono and shorter (church 5 s, hall 3 s, ro
 straight with the length and with the number of channels, while you cannot hear that a reverb tail is mono.
 For a mix of three sounds that took the load from 0.77 to 0.27 of a core, measured over five runs.
 
-If it stutters anyway, for instance because something heavy is running on your pc, switch on **Lichte modus**
-(Lite mode) under Instellingen › Beeld (Settings › Visuals). That drops the per-sound room reverb and halves
+If it stutters anyway, for instance because something heavy is running on your pc, switch on **Light mode**
+under Settings › Visuals. That drops the per-sound room reverb and halves
 the particles. You measure this with an `OfflineAudioContext`: it renders as fast as the machine can, so
 render time divided by sound duration is exactly the fraction of a core a node really costs.
 
 `npm run dist` makes `dist/Hushfall Setup 1.0.0.exe` (installer) and `dist/Hushfall-portable.exe`. The 82 own
 sounds sit inside the exe and work right away. Recordings do not (that would be gigabytes); you add those
-through **Instellingen › Bibliotheek** (Settings › Library):
+through **Settings › Library**:
 
-- **Alle ambient geluiden ophalen** (fetch all ambient sounds) or **Snelle selectie** (quick selection):
-  downloads into `%APPDATA%\Hushfall\library`, with progress and a stop button. You can resume later; sounds
+- **Fetch all ambient sounds** or **Quick selection (~500 MB)**: downloads into `%APPDATA%\Hushfall\library`, with progress and a stop button. You can resume later; sounds
   that are already there are skipped.
-- **Bestaande bibliotheekmap gebruiken…** (use an existing library folder): point at a folder with a
+- **Use an existing library folder…**: point at a folder with a
   `library.json` and a `sounds` directory (the `public` folder of this project, for example). The app reads it
   directly, without copying or downloading again.
 
@@ -266,7 +265,8 @@ so cards stay recognisable without photos or emoji.
 
 ## A note on language
 
-The app's own interface is still in Dutch. Where this README mentions a button or a menu, the Dutch label is
-given first, with the English meaning next to it. The same goes for a handful of identifiers in the code
-(`STORE_BRONNEN`, `stemGolf`) and for the `--only` and `--drop` values of the fetch script, which name kinds in
-Dutch (`kerst`, `gregoriaans`, `muziek`).
+The app, this README and the code comments are in English. What is still Dutch is everything a user never
+sees: the keys for kinds and moods (`regen`, `onweer`, `muziek`, ...), a handful of identifiers
+(`STORE_BRONNEN`, `stemGolf`, `zangNoot`) and, because they are those same keys, the `--only` and `--drop`
+values of the fetch script. Those keys are written into `library.json` and into saved settings, so renaming
+them would break libraries and preferences that already exist.

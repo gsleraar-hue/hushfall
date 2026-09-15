@@ -215,7 +215,7 @@ function radioAdressen(url) {
       el.play().catch((e) => this._radioFout(e && e.name));
       // Still stuck on "Verbinden..."? Then something is wrong as well, only without an error.
       clearTimeout(this.radio.klok);
-      this.radio.klok = setTimeout(() => { if (this.radio.station && !this.radio.playing) this._radioFout('geen antwoord binnen 20 seconden'); }, 20000);
+      this.radio.klok = setTimeout(() => { if (this.radio.station && !this.radio.playing) this._radioFout('no answer within 20 seconds'); }, 20000);
       this.emit('radio'); this.emit('state');
     }
     _radioFout(naam) {
@@ -226,7 +226,7 @@ function radioAdressen(url) {
       const detail = el && el.error && el.error.message ? el.error.message : '';
       // Another address left? Then that one.
       if (this.radio.poging + 1 < this.radio.adressen.length) { this.radio.poging++; this._radioStart(); return; }
-      const uitleg = { 1: 'afgebroken', 2: 'netwerkfout: de stream komt niet binnen', 3: 'de audio is niet te decoderen', 4: 'adres of formaat wordt niet ondersteund' }[code] || naam || 'onbekende fout';
+      const uitleg = { 1: 'aborted', 2: 'network error: the stream does not come in', 3: 'the audio cannot be decoded', 4: 'address or format is not supported' }[code] || naam || 'unknown error';
       const geprobeerd = this.radio.adressen.length;
       this.stopRadio();
       this.emit('radio-error', { ...station, uitleg, code, detail, geprobeerd });
