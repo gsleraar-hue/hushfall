@@ -49,6 +49,7 @@ jobs:
         run: ls -la dist/ || echo "no dist folder"
       - uses: actions/upload-artifact@v7
         with:
+          retention-days: 1
           name: build-windows
           path: |
             dist/*.exe
@@ -97,6 +98,7 @@ jobs:
         run: ls -la dist/ || echo "no dist folder"
       - uses: actions/upload-artifact@v7
         with:
+          retention-days: 1
           name: build-mac
           path: |
             dist/*.dmg
@@ -124,6 +126,7 @@ jobs:
       # do yourself through Partner Center, and that comes with a manual review.
       - uses: actions/upload-artifact@v7
         with:
+          retention-days: 1
           name: hushfall-msix
           path: dist/*.appx
 
