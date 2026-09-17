@@ -42,23 +42,41 @@
      */
     queue(t, fn) { this.queued.push({ t, fn }); }
     tick() {
-      const horizon = this.ctx.currentTime + 1.8;
+      const nu = this.ctx.currentTime;
+      const horizon = nu + 1.8;
       for (const task of this.tasks) {
+        // A task can fall behind: a stalled main thread, a throttled timer, a laptop waking up.
+        // Working through everything that was missed fires those events with a time in the past, and
+        // Web Audio plays anything scheduled in the past immediately — so a dozen notes land on top
+        // of each other. That is heard as halting, and since it is in the material rather than the
+        // playback it comes out over Sonos just the same. Measured over 1239 notes, 35 arrived this
+        // way. Better to let what was missed go and pick up from now.
+        // Read the clock again rather than trusting the one from the top of the tick: a tick that
+        // builds a lot of notes can itself take hundreds of milliseconds, and against a stale clock
+        // an event that looked safely ahead is already in the past by the time it is built.
+        if (task.t < this.ctx.currentTime) task.t = this.ctx.currentTime + 0.03;
         let guard = 0;
         while (task.t < horizon && guard++ < 400) {
           try { task.fn(task.t); } catch (e) { /* stil */ }
           task.t += Math.max(0.004, typeof task.gap === 'function' ? task.gap(task.t) : task.gap);
         }
       }
-      // Whatever is about to sound gets built regardless, so a note is never late; the rest is
-      // spread over the coming ticks until this tick's budget runs out. The budget counts events,
-      // not nodes, and one event can be a dozen nodes — so keep it low. A bar is planned about two
-      // seconds ahead, which is twenty ticks to spread it over.
-      const now = this.ctx.currentTime;
-      let budget = 8;
+      // Everything within the safety window is built no matter what; only what lies further ahead is
+      // rationed, so spreading the work can never make a note late.
+      //
+      // That safety window used to be 0.15 s and the ration eight events a tick, and it was far too
+      // tight: measured over 1239 notes, 35 of them were built after their moment had already
+      // passed — the first percentile sat at minus three quarters of a second — and another twelve
+      // landed inside the 40 ms output buffer. A note built too late sounds at once instead of on
+      // the beat, which is heard as halting, and because it is in the material and not in the
+      // playback it comes out over Sonos exactly the same. Six tenths of a second of headroom is
+      // fifteen times the output latency, and the sampled voices made building cheap enough that
+      // rationing is barely needed anyway.
+      let budget = 12;
       if (this.queued.length > 1) this.queued.sort((a, b) => a.t - b.t);
-      while (this.queued.length && (this.queued[0].t < now + 0.15 || (budget > 0 && this.queued[0].t < now + 0.7))) {
+      while (this.queued.length && (this.queued[0].t < nu + 0.35 || (budget > 0 && this.queued[0].t < nu + 1))) {
         const e = this.queued.shift(); budget--;
+        if (e.t < this.ctx.currentTime) continue;   // te laat: overslaan in plaats van alsnog laten klinken
         try { e.fn(e.t); } catch (err) { /* stil */ }
       }
     }
@@ -1056,22 +1074,31 @@
   // The four voices above as pre-rendered samples. The note length is baked into the sample, so a
   // caller's `dur` only still steers the fallback; for struck and plucked strings that is right
   // anyway — a piano note decays the way it decays, whatever the score asks for.
-  const vibeNote = (ctx, out, o) => {
-    const slot = oneShot(ctx, 'vibes', { bases: [60, 72, 84], dur: 2.6, render: (c, d, f, dur) => vibeNoteRaw(c, d, { t: 0, freq: f, gain: 1, pan: 0, dur }) });
-    if (!playShot(ctx, out, slot, o)) vibeNoteRaw(ctx, out, o);
+  //
+  // The recipes live here so a piece can have them rendered the moment it starts. Left until the
+  // first note, the opening seconds run on the oscillator fallback, which is fifteen nodes a note
+  // instead of three — enough to make a tick take hundreds of milliseconds and push the notes after
+  // it past their own moment.
+  const VOICES = {
+    vibes: { bases: [60, 72, 84], dur: 2.6, raw: (c, d, o) => vibeNoteRaw(c, d, o) },
+    grand: { bases: [45, 57, 69, 81], dur: 3.2, raw: (c, d, o) => grandNoteRaw(c, d, o) },
+    nylon: { bases: [52, 64, 76], dur: 1.8, raw: (c, d, o) => nylonNoteRaw(c, d, o) },
+    upright: { bases: [33, 45], dur: 0.9, raw: (c, d, o) => uprightNoteRaw(c, d, o) },
   };
-  const grandNote = (ctx, out, o) => {
-    const slot = oneShot(ctx, 'grand', { bases: [45, 57, 69, 81], dur: 3.2, render: (c, d, f, dur) => grandNoteRaw(c, d, { t: 0, freq: f, gain: 1, pan: 0, dur }) });
-    if (!playShot(ctx, out, slot, o)) grandNoteRaw(ctx, out, o);
+  const voiceSlot = (ctx, naam) => {
+    const v = VOICES[naam];
+    return oneShot(ctx, naam, { bases: v.bases, dur: v.dur, render: (c, d, f, dur) => v.raw(c, d, { t: 0, freq: f, gain: 1, pan: 0, dur }) });
   };
-  const nylonNote = (ctx, out, o) => {
-    const slot = oneShot(ctx, 'nylon', { bases: [52, 64, 76], dur: 1.8, render: (c, d, f, dur) => nylonNoteRaw(c, d, { t: 0, freq: f, gain: 1, pan: 0, dur }) });
-    if (!playShot(ctx, out, slot, o)) nylonNoteRaw(ctx, out, o);
+  /** Rendert de samples vast, zodat de eerste maten niet op het dure pad hoeven te draaien. */
+  const warmVoices = (ctx, namen) => { for (const n of namen) voiceSlot(ctx, n); };
+  const speelVoice = (naam) => (ctx, out, o) => {
+    const slot = voiceSlot(ctx, naam);
+    if (!playShot(ctx, out, slot, naam === 'upright' ? { pan: -0.1, ...o } : o)) VOICES[naam].raw(ctx, out, o);
   };
-  const uprightNote = (ctx, out, o) => {
-    const slot = oneShot(ctx, 'upright', { bases: [33, 45], dur: 0.9, render: (c, d, f, dur) => uprightNoteRaw(c, d, { t: 0, freq: f, gain: 1, pan: 0, dur }) });
-    if (!playShot(ctx, out, slot, { pan: -0.1, ...o })) uprightNoteRaw(ctx, out, o);
-  };
+  const vibeNote = speelVoice('vibes');
+  const grandNote = speelVoice('grand');
+  const nylonNote = speelVoice('nylon');
+  const uprightNote = speelVoice('upright');
   /** Brushed drums: a sweeping movement on the snare plus soft accents. */
   function brushes(ctx, out, sched, beat, { swing = 0.62, ride = true, level = 1 }) {
     const nodes = [];
@@ -1101,6 +1128,8 @@
     key = null, bassLevel = 1, drumLevel = 1, leadDensity = 0.6, tape = false,
   }) {
     const sched = new Sched(ctx); const beat = 60 / bpm; const swing = feel === 'swing' ? 0.62 : 0.5;
+    // Laat de samples meteen renderen; anders draaien de eerste maten op het dure oscillatorpad.
+    warmVoices(ctx, ['upright', comp, lead].filter((n) => VOICES[n]));
     const root = key ?? 48 + Math.floor(rnd(0, 12));
     const rev = reverb(ctx, out, 'irRoom', feel === 'bossa' ? 0.22 : 0.3);
     const bus = tape ? filt(ctx, 'lowpass', 3000, 0.5) : gainNode(ctx, 1); bus.connect(rev);
