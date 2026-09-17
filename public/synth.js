@@ -291,13 +291,21 @@
    * which modes speak, so no two strikes have the same colour. Aluminium rings for seconds; bamboo
    * barely rings at all and is mostly the knock itself.
    *
-   * The clapper only moves when the wind does, so strikes arrive in gusty clusters with real silence
-   * in between — a chime that tinkles steadily sounds like a toy. A gust usually catches several
-   * tubes in a row, and often the same tube twice.
+   * The clapper only moves when the wind does, so strikes arrive in clusters, and a gust usually
+   * catches several tubes in a row and often the same tube twice. But the tubes are the subject
+   * here, not an accent on a windy afternoon: a chime is hung up precisely to be heard, and when the
+   * clapper reaches a tube it rings out clearly and hangs there for seconds. The strikes therefore
+   * carry the sound and the breeze sits well behind them, and a strike is rarely faint — the skewed
+   * strength that suits a hearth fire, where most pops are barely audible, is wrong here.
    */
   function windChimes(ctx, out, { material = 'metal', root = 72, tubes = 6, scale = 'penta', breeze = 0.35 }) {
     const sched = new Sched(ctx); const nodes = [];
-    if (breeze > 0) nodes.push(wind(ctx, out, { strength: breeze, trees: R() < 0.5 }));
+    // The breeze runs through a gain of its own so it can sit behind the tubes. Straight into the
+    // output it measured four times louder than the chimes, which is how you end up hearing only wind.
+    if (breeze > 0) {
+      const windUit = gainNode(ctx, 0.3); windUit.connect(out);
+      nodes.push(wind(ctx, windUit, { strength: breeze, trees: R() < 0.5 }));
+    }
     const hal = reverb(ctx, out, 'irRoom', 0.22);
 
     const bamboe = material === 'bamboo';
@@ -320,7 +328,7 @@
         o.frequency.value = buis.freq * ratio * rnd(0.999, 1.001);
         const g = gainNode(ctx, 0);
         const dur = basis * len;
-        const top = 0.05 * kracht * amp * (ratio > 1 ? plek : 1) * rnd(0.85, 1.15);
+        const top = 0.16 * kracht * amp * (ratio > 1 ? plek : 1) * rnd(0.85, 1.15);
         g.gain.setValueAtTime(0, t);
         g.gain.linearRampToValueAtTime(top, t + 0.002);
         g.gain.exponentialRampToValueAtTime(0.0003, t + dur);
@@ -330,7 +338,7 @@
       burst(ctx, uit, {
         t, dur: bamboe ? rnd(0.03, 0.07) : rnd(0.008, 0.02), color: 'white',
         type: bamboe ? 'lowpass' : 'bandpass', freq: bamboe ? rnd(400, 900) : buis.freq * rnd(3, 7),
-        Q: bamboe ? 1.2 : 1.6, gain: 0.05 * kracht * (bamboe ? 1.6 : 1), attack: 0.0006,
+        Q: bamboe ? 1.2 : 1.6, gain: 0.14 * kracht * (bamboe ? 1.6 : 1), attack: 0.0006,
       });
     };
 
@@ -338,8 +346,10 @@
     // tube, how many it catches and how hard.
     let stoot = 0.3;
     sched.every(() => rnd(2.5, 7), (t) => { stoot = clamp(stoot + rnd(-0.45, 0.5), 0.05, 1); });
-    sched.every(() => rnd(0.7, 5) / (0.15 + stoot * 1.5), (t) => {
-      const n = Math.round(rnd(1, 3 + stoot * 5));
+    // A chime in any real breeze is struck several times a second while a gust lasts, not once
+    // every few seconds, and the tails overlap into a shimmer.
+    sched.every(() => rnd(0.4, 2.6) / (0.2 + stoot * 1.4), (t) => {
+      const n = Math.round(rnd(1, 3 + stoot * 6));
       let tt = t;
       let vorige = -1;
       for (let i = 0; i < n; i++) {
@@ -347,7 +357,8 @@
         let k = Math.floor(R() * buizen.length);
         if (k === vorige && R() < 0.6) k = (k + 1 + Math.floor(R() * (buizen.length - 1))) % buizen.length;
         vorige = k;
-        const kracht = Math.pow(R(), 1.6) * (0.35 + stoot * 0.85);
+        // Not the skewed strength of a hearth fire: when the clapper reaches a tube, it rings.
+        const kracht = (0.45 + 0.55 * R()) * (0.5 + stoot * 0.55);
         const buis = buizen[k], slagT = tt;
         sched.queue(slagT, () => slag(slagT, buis, kracht));
         tt += rnd(0.05, 0.4) / (0.4 + stoot);
@@ -2222,9 +2233,9 @@
     G('wind-bomen', 'Wind in the trees', 'wind', 'Rustling leaves and gusts', wind, { strength: 0.5, trees: true }, 2.4, 0.08),
     G('wind-storm', 'Gale', 'wind', 'Wind howling around the house', wind, { strength: 0.9, trees: false }, 0.96, 0.06),
     G('wind-bries', 'Light breeze', 'wind', 'Barely more than a breath', wind, { strength: 0.2, trees: true }, 2.14, 0.1),
-    G('wind-chimes', 'Wind chimes', 'wind', 'Tuned metal tubes on a porch, struck whenever the wind reaches them', windChimes, { material: 'metal', root: 72, tubes: 6, scale: 'penta', breeze: 0.3 }, 1.55, 0.08),
-    G('wind-chimes-diep', 'Deep chimes', 'wind', 'Long, heavy tubes with a slow ring, sparse and low', windChimes, { material: 'metal', root: 57, tubes: 5, scale: 'minor', breeze: 0.25 }, 1.68, 0.08),
-    G('wind-chimes-bamboe', 'Bamboo chimes', 'wind', 'Hollow wooden knocking, hardly any ring at all', windChimes, { material: 'bamboo', root: 65, tubes: 6, scale: 'penta', breeze: 0.35 }, 1.92, 0.1),
+    G('wind-chimes', 'Wind chimes', 'wind', 'Tuned metal tubes on a porch, struck whenever the wind reaches them', windChimes, { material: 'metal', root: 72, tubes: 6, scale: 'penta', breeze: 0.3 }, 0.99, 0.08),
+    G('wind-chimes-diep', 'Deep chimes', 'wind', 'Long, heavy tubes with a slow ring, sparse and low', windChimes, { material: 'metal', root: 57, tubes: 5, scale: 'minor', breeze: 0.25 }, 1.07, 0.08),
+    G('wind-chimes-bamboe', 'Bamboo chimes', 'wind', 'Hollow wooden knocking, hardly any ring at all', windChimes, { material: 'bamboo', root: 65, tubes: 6, scale: 'penta', breeze: 0.35 }, 1.7, 0.1),
     G('zee-strand', 'Waves on the shore', 'zee', 'Gentle surf', waves, { size: 0.5 }, 0.75, 0.1),
     G('zee-woelig', 'Rough sea', 'zee', 'Big waves against the rocks', waves, { size: 1 }, 0.62, 0.08),
     G('water-beek', 'Mountain stream', 'water', 'Fast, bubbling water', stream, { speed: 0.7 }, 1.9, 0.12),
