@@ -888,6 +888,109 @@
     return { stop: stopAll(nodes, sched, ctx) };
   }
 
+  /**
+   * Sixteen notes. Jean-Michel Jarre fed sixteen notes into an algorithm on an Atari Mega-ST and let
+   * it write the title track of Waiting for Cousteau - forty-seven minutes of it - after reading in
+   * Douglas Adams how Dirk Gently's software turned a company's books into music. He said later that
+   * he had played every note by hand after all, and that the background holds time-stretched
+   * samples. This takes him at both words: sixteen notes are drawn when the sound starts and nothing
+   * else is ever used, and the wash underneath is this sound's own note slowed down to a crawl.
+   *
+   * The order comes out of the notes themselves - each one says how far along the set to step - so
+   * the line never repeats and never leaves the sixteen. There is no beat: the gaps drift between a
+   * few seconds and a dozen, which is why it can run for an hour without ever announcing itself.
+   */
+  function zestienNoten(ctx, out, { scale = 'mpenta', root = 41, count = 16, notes = null, pace = 1, wash = true, drone = true }) {
+    const sched = new Sched(ctx);
+    const sc = SCALES[scale] || SCALES.mpenta;
+    const rev = reverb(ctx, out, 'irLong', 0.5);
+    const lp = filt(ctx, 'lowpass', 2200, 0.6); lp.connect(rev);
+    wander(ctx, sched, lp.frequency, 1200, 3200, 14, 7);
+    const nodes = [];
+
+    // The sixteen. Drawn once, over three octaves, and from here on the only pitches there are.
+    const zaad = [];
+    for (let i = 0; i < count; i++) {
+      zaad.push(notes && notes[i] != null ? notes[i] : deg(sc, root, Math.floor(rnd(0, sc.length * 3)), 0));
+    }
+
+    // A struck tone that keeps ringing: glass rather than metal, so it carries without glaring.
+    const belRaw = (uitCtx, uit, { t, freq, gain = 1, pan = 0 }) => {
+      for (const [ratio, amp, len] of [[1, 1, 1], [2.01, 0.3, 0.62], [3.02, 0.11, 0.4], [5.41, 0.04, 0.22]]) {
+        const o = uitCtx.createOscillator(); o.type = 'sine'; o.frequency.value = freq * ratio;
+        const g = gainNode(uitCtx, 0); const dur = 6 * len;
+        g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(gain * amp, t + 0.012);
+        g.gain.exponentialRampToValueAtTime(0.0003, t + dur);
+        chain(o, g, panNode(uitCtx, pan), uit); o.start(t); o.stop(t + dur + 0.05);
+      }
+      // The breath that swells in behind the strike. Without it every note is a bell; with it the
+      // note settles into the room and the next one has something to arrive in.
+      for (const det of [-7, 7]) {
+        const o = uitCtx.createOscillator(); o.type = 'triangle'; o.frequency.value = freq; o.detune.value = det;
+        const g = gainNode(uitCtx, 0);
+        g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(gain * 0.22, t + 1.6);
+        g.gain.exponentialRampToValueAtTime(0.0003, t + 6);
+        chain(o, g, panNode(uitCtx, pan * 0.6), uit); o.start(t); o.stop(t + 6.1);
+      }
+    };
+    const slot = oneShot(ctx, 'zestien', { bases: [41, 53, 65, 77], variants: 2, dur: 6.2, render: (c, d, f) => belRaw(c, d, { t: 0, freq: f, gain: 1 }) });
+    const speel = (t, n, gain, pan) => {
+      if (!playShot(ctx, lp, slot, { t, freq: midi(n), gain, pan })) belRaw(ctx, lp, { t, freq: midi(n), gain, pan });
+    };
+
+    // Deep sustained bed, a fifth wide, moving too slowly to follow.
+    if (drone) {
+      for (const [ratio, amp, det] of [[0.5, 0.05, -4], [0.5, 0.05, 4], [0.75, 0.025, 0]]) {
+        const o = ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.value = midi(root) * ratio; o.detune.value = det;
+        const dlp = filt(ctx, 'lowpass', 220, 1); const g = gainNode(ctx, amp);
+        chain(o, dlp, g, rev); o.start(); nodes.push(o);
+        wander(ctx, sched, dlp.frequency, 110, 420, 11, 6);
+      }
+    }
+
+    // The walk. i is where we stand, and the note standing there decides how far we go next. On its
+    // own that rule eats itself: every position has one fixed successor, so after a while it is
+    // caught in a ring of four to eleven notes and plays that ring for ever. A turn that shifts the
+    // whole set every seventeen notes keeps it out of that trap - measured, all sixteen are used and
+    // the pitch order only comes round after 272 notes, better than half an hour.
+    let i = Math.floor(R() * count), oct = 0, draai = 0, sinds = 0;
+    let rust = rnd(5, 9) / pace;
+    sched.every(() => rust, (t) => {
+      rust = rnd(4.5, 12) / pace;
+      const n = zaad[i] + 12 * oct;
+      speel(t, n, rnd(0.055, 0.095), rnd(-0.5, 0.5));
+      // a second note close behind, now and then: the only gesture this piece allows itself
+      if (R() < 0.18) {
+        const j = (i + 3 + Math.floor(R() * 4)) % count;
+        sched.queue(t + rnd(0.9, 2.1), (tt) => speel(tt, zaad[j] + 12 * oct, rnd(0.035, 0.06), rnd(-0.6, 0.6)));
+      }
+      i = (i + 1 + (Math.abs(zaad[i]) % 5) + draai) % count;
+      if (++sinds % 17 === 0) draai = (draai + 1) % count;
+      if (R() < 0.12) oct = clamp(oct + (R() < 0.5 ? -1 : 1), -1, 1);
+    }, 0.6);
+
+    // Time-stretched samples in the background: the same struck note, four times too slow and two
+    // octaves down, so you hear the shape of it without hearing the note.
+    if (wash) {
+      const washLp = filt(ctx, 'lowpass', 700, 0.7); const washG = gainNode(ctx, 0.5);
+      chain(washLp, washG, rev);
+      sched.every(() => rnd(24, 48), (t) => {
+        const lijst = slot.buffers.get(77);
+        if (!lijst || !lijst.length) return;
+        const src = ctx.createBufferSource(); src.buffer = lijst[Math.floor(R() * lijst.length)];
+        const rate = rnd(0.2, 0.32); src.playbackRate.value = rate;
+        const duur = Math.min(34, src.buffer.duration / rate);
+        const g = gainNode(ctx, 0);
+        g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(rnd(0.1, 0.18), t + duur * 0.45);
+        g.gain.linearRampToValueAtTime(0, t + duur);
+        chain(src, g, panNode(ctx, rnd(-0.7, 0.7)), washLp);
+        src.start(t); src.stop(t + duur + 0.1);
+      }, 8);
+    }
+
+    return { stop: stopAll(nodes, sched, ctx) };
+  }
+
   /** Lo-fi jazz: electric piano with seventh chords, walking bass, brushed drums, vinyl crackle. */
   function lofiJazz(ctx, out, { bpm = 76, key = null, drums = true, minor = false, crackle = true }) {
     const sched = new Sched(ctx); const beat = 60 / bpm; const swing = 0.62;
@@ -2292,6 +2395,9 @@
     G('muziek-schemering', 'Dusk', 'muziek', 'Dark minor chords, no sparkle', pads, { scale: 'minor', root: 43, warmth: 0.35, sparkle: false, chordLen: [11, 18] }, 0.99, 0),
     G('muziek-winterpiano', 'Winter piano', 'muziek', 'Sparse piano notes over a pad', piano, { scale: 'penta', root: 60, tempo: 1 }, 1.18, 0),
     G('muziek-nachtpiano', 'Piano at night', 'muziek', 'Slow minor notes with a long reverb', piano, { scale: 'mpenta', root: 57, tempo: 0.7 }, 1.32, 0),
+    G('muziek-zestien-noten', 'Sixteen notes', 'muziek', 'Sixteen notes and an algorithm, after the Atari piece Jarre let run for forty-seven minutes', zestienNoten, { scale: 'mpenta', root: 41 }, 1.41, 0),
+    G('muziek-zestien-diep', 'Sixteen notes, deep', 'muziek', 'The same sixteen, an octave lower and slower still', zestienNoten, { scale: 'mpenta', root: 34, pace: 0.7 }, 1.57, 0),
+    G('muziek-zestien-licht', 'Sixteen notes, open', 'muziek', 'Sixteen notes in a major pentatonic, higher and a little more often', zestienNoten, { scale: 'penta', root: 48, pace: 1.4, drone: false }, 5.4, 0),
     G('jazz-piano', 'Piano jazz', 'jazz', 'An unhurried grand with bass and brushes, never in the way', jazzCombo, { bpm: 84, changes: 'ballade', feel: 'ballad', lead: 'grand', comp: 'grand', leadDensity: 0.55, drumLevel: 0.7 }, 0.73, 0.06),
     G('jazz-pianotrio', 'Piano trio', 'jazz', 'Swinging trio: grand piano, walking bass and ride', jazzCombo, { bpm: 108, changes: 'turnaround', feel: 'swing', lead: 'grand', comp: 'grand' }, 0.58, 0.05),
     G('jazz-coffeetable', 'Coffee table jazz', 'jazz', 'Vibraphone and soft chords, never insistent', jazzCombo, { bpm: 88, changes: 'ballade', feel: 'ballad', lead: 'vibes', comp: 'vibes', drumLevel: 0.5, leadDensity: 0.5 }, 0.5, 0.06),
