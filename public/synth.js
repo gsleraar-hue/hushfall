@@ -441,6 +441,140 @@
    * gliding upwards as it fades. Underneath it a moving bed for the hiss of the current and
    * a low floor for the volume of the water.
    */
+  /**
+   * Under water. Water swallows the high notes within metres, so almost everything here sits below a
+   * kilohertz and the stereo image is wide rather than placed - under water your ears cannot tell
+   * you where a sound comes from either.
+   *
+   * Bubbles are the one thing that must be right. A bubble is a little air spring: it rings at a
+   * pitch set by its size, about a kilohertz for one of three millimetres, and the pitch climbs as
+   * it shrinks and rises, all inside a few hundredths of a second. A bubble that does not climb
+   * sounds like a marimba.
+   *
+   * On a reef the crackle is not water at all but snapping shrimp, thousands of them, each closing
+   * its claw hard enough to collapse a cavity. They are the loudest thing in a warm sea, and they
+   * are broadband, so they come through the muffling that swallows everything else.
+   */
+  function onderwater(ctx, out, { depth = 0.5, bubbles = 0.5, swell = 0.6, shrimp = 0, groan = 0, regulator = 0 }) {
+    const sched = new Sched(ctx); const nodes = [];
+    // Everything muffled together: deeper means darker.
+    const demp = filt(ctx, 'lowpass', 900 - 500 * depth, 0.7); demp.connect(out);
+    // The clicks keep their edge; they are close by and broadband.
+    const scherp = filt(ctx, 'lowpass', 6000, 0.5); scherp.connect(out);
+
+    // The body of water itself: a low roar with the swell breathing through it.
+    const romp = loopNoise(ctx, 'brown'); const rlp = filt(ctx, 'lowpass', 220 - 90 * depth, 0.8);
+    const rg = gainNode(ctx, 0.13 + 0.05 * depth); chain(romp, rlp, rg, out); nodes.push(romp);
+    wander(ctx, sched, rlp.frequency, 90, 300, 9, 5);
+    const ruis = loopNoise(ctx, 'pink'); const rug = gainNode(ctx, 0.05 - 0.02 * depth);
+    chain(ruis, filt(ctx, 'lowpass', 700, 0.5), rug, demp); nodes.push(ruis);
+    if (swell > 0) {
+      const lfo = ctx.createOscillator(); lfo.type = 'sine'; lfo.frequency.value = 1 / rnd(7, 12);
+      const diepte = gainNode(ctx, (0.06 + 0.05 * depth) * swell);
+      chain(lfo, diepte); diepte.connect(rg.gain); lfo.start(); nodes.push(lfo);
+    }
+
+    // One bubble. The rise in pitch is the whole thing.
+    const bubbel = (t, f, gain, pan) => {
+      const dur = clamp(0.055 * (700 / f), 0.018, 0.13);
+      const o = ctx.createOscillator(); o.type = 'sine';
+      o.frequency.setValueAtTime(f, t);
+      o.frequency.exponentialRampToValueAtTime(f * rnd(1.3, 2.2), t + dur);
+      const g = gainNode(ctx, 0);
+      g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(gain, t + 0.0015);
+      g.gain.exponentialRampToValueAtTime(0.0004, t + dur);
+      chain(o, g, panNode(ctx, pan), demp); o.start(t); o.stop(t + dur + 0.03);
+    };
+    /** A string of them, the way they come off anything that lets air go. */
+    const sliert = (t, aantal, basis, gain, pan, spreiding) => {
+      for (let i = 0; i < aantal; i++) {
+        sched.queue(t + (i / aantal) * spreiding + rnd(0, spreiding * 0.3), (tt) => bubbel(tt, basis * rnd(0.75, 1.45), gain * rnd(0.5, 1), pan + rnd(-0.12, 0.12)));
+      }
+    };
+    if (bubbles > 0) {
+      sched.every(() => rnd(1.4, 7) / (0.3 + bubbles), (t) => {
+        sliert(t, Math.round(rnd(3, 5 + 9 * bubbles)), rnd(380, 1400), rnd(0.02, 0.055), rnd(-0.7, 0.7), rnd(0.3, 1.6));
+      }, 1);
+      // the fine fizz that never stops where water is moving
+      if (bubbles > 0.45) sched.every(() => rnd(0.05, 0.4), (t) => bubbel(t, rnd(900, 2600), rnd(0.004, 0.014), rnd(-0.9, 0.9)), 1.5);
+    }
+
+    // Snapping shrimp: a dry click, no pitch, and never one at a time. A reef crackles like fat in a
+    // pan - hundreds of clicks a second - and building those one by one would cost a thousand nodes
+    // a second. So two seconds of crackle are rendered once and laid over each other at shifting
+    // speeds and places; over that go the few near clicks you can actually pick out.
+    if (shrimp > 0) {
+      // Written into a buffer sample by sample rather than built out of nodes: five hundred clicks
+      // as five hundred little node graphs costs a fifth of a second of the main thread the moment
+      // the sound starts, and that is exactly the kind of pause you hear.
+      const knetterBed = () => {
+        const sr = ctx.sampleRate, len = Math.floor(sr * 2);
+        const b = ctx.createBuffer(1, len, sr); const d = b.getChannelData(0);
+        for (let k = 0; k < 520; k++) {
+          const begin = Math.floor(R() * (len - sr * 0.01));
+          const duur = Math.floor(sr * rnd(0.0015, 0.005)), amp = rnd(0.15, 0.7);
+          let vorig = 0;
+          for (let i = 0; i < duur; i++) {
+            const w = R() * 2 - 1;
+            const hoog = w - 0.82 * vorig; vorig = w;   // eenvoudige hoogdoorlaat: de klik moet droog zijn
+            d[begin + i] += hoog * amp * Math.exp(-i / (duur * 0.35));
+          }
+        }
+        let piek = 0; for (let i = 0; i < len; i++) piek = Math.max(piek, Math.abs(d[i]));
+        if (piek) for (let i = 0; i < len; i++) d[i] *= 0.8 / piek;
+        return b;
+      };
+      const bedden = [knetterBed(), knetterBed()];
+      sched.every(() => rnd(0.8, 1.5), (t) => {
+        const src = ctx.createBufferSource(); src.buffer = bedden[Math.floor(R() * bedden.length)];
+        src.playbackRate.value = rnd(0.88, 1.14);
+        const duur = rnd(1.4, 2.2);
+        const g = gainNode(ctx, 0);
+        g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.5 * shrimp, t + 0.25);
+        g.gain.setValueAtTime(0.5 * shrimp, t + duur - 0.3);
+        g.gain.linearRampToValueAtTime(0, t + duur);
+        chain(src, g, panNode(ctx, rnd(-0.6, 0.6)), scherp);
+        src.start(t, R() * 0.3); src.stop(t + duur + 0.05);
+      }, 0.5);
+      sched.every(() => rnd(0.12, 0.9) / (0.2 + shrimp), (t) => {
+        burst(ctx, scherp, { t, dur: rnd(0.002, 0.006), color: 'white', type: 'highpass', freq: rnd(1500, 4200), Q: 0.7, gain: rnd(0.04, 0.13) * shrimp, attack: 0.0004, pan: rnd(-1, 1) });
+      }, 0.7);
+    }
+
+    // Far off, something big and slow. Ice, a hull, a whale - from here you cannot tell.
+    if (groan > 0) {
+      sched.every(() => rnd(45, 130) / groan, (t) => {
+        const f0 = rnd(48, 105), naar = f0 * rnd(1.15, 1.7), duur = rnd(3.5, 8);
+        for (const [ratio, amp] of [[1, 1], [2, 0.22], [3, 0.07]]) {
+          const o = ctx.createOscillator(); o.type = 'sine';
+          o.frequency.setValueAtTime(f0 * ratio, t);
+          o.frequency.exponentialRampToValueAtTime(naar * ratio, t + duur * 0.55);
+          o.frequency.exponentialRampToValueAtTime(f0 * 0.9 * ratio, t + duur);
+          const g = gainNode(ctx, 0);
+          g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.055 * amp * groan, t + duur * 0.3);
+          g.gain.setValueAtTime(0.055 * amp * groan, t + duur * 0.7);
+          g.gain.exponentialRampToValueAtTime(0.0004, t + duur + 2.5);
+          chain(o, g, panNode(ctx, rnd(-0.5, 0.5)), demp); o.start(t); o.stop(t + duur + 2.6);
+        }
+      }, 12);
+    }
+
+    // Your own breathing through a regulator: a dry pull in, and everything you let go rising past
+    // your ears on the way out. It is the loudest thing a diver hears.
+    if (regulator > 0) {
+      sched.every(() => rnd(5, 7.5), (t) => {
+        const in1 = rnd(1.3, 1.9);
+        burst(ctx, demp, { t, dur: in1, color: 'white', type: 'bandpass', freq: rnd(700, 1100), Q: 0.8, gain: 0.05 * regulator, attack: in1 * 0.45 });
+        burst(ctx, demp, { t, dur: in1, color: 'brown', type: 'lowpass', freq: 400, Q: 0.7, gain: 0.05 * regulator, attack: in1 * 0.5 });
+        const uit = t + in1 + rnd(0.25, 0.6), duur = rnd(1.6, 2.6);
+        burst(ctx, demp, { t: uit, dur: duur, color: 'white', type: 'bandpass', freq: rnd(500, 800), Q: 0.7, gain: 0.04 * regulator, attack: 0.12 });
+        sliert(uit, Math.round(rnd(14, 26)), rnd(300, 700), rnd(0.03, 0.06) * regulator, rnd(-0.3, 0.3), duur);
+      }, 1.5);
+    }
+
+    return { stop: stopAll(nodes, sched, ctx) };
+  }
+
   function stream(ctx, out, { speed = 0.6 }) {
     const sched = new Sched(ctx);
     const n1 = loopNoise(ctx, 'white'); const b1 = filt(ctx, 'bandpass', 900 + 800 * speed, 1.1); const g1 = gainNode(ctx, 0.1); chain(n1, b1, g1, panNode(ctx, -0.25), out);
@@ -889,12 +1023,13 @@
   }
 
   /**
-   * Sixteen notes. Jean-Michel Jarre fed sixteen notes into an algorithm on an Atari Mega-ST and let
-   * it write the title track of Waiting for Cousteau - forty-seven minutes of it - after reading in
-   * Douglas Adams how Dirk Gently's software turned a company's books into music. He said later that
-   * he had played every note by hand after all, and that the background holds time-stretched
-   * samples. This takes him at both words: sixteen notes are drawn when the sound starts and nothing
-   * else is ever used, and the wash underneath is this sound's own note slowed down to a crawl.
+   * Sixteen notes. In the late eighties you could hand an algorithm a handful of notes and let it
+   * write for as long as you liked - a trick borrowed from Douglas Adams, whose Dirk Gently turns a
+   * company's books into music by reading the figures as a melody. Records were made that way, up
+   * to three quarters of an hour from sixteen notes, with time-stretched samples underneath.
+   *
+   * So it goes here: sixteen notes are drawn when the sound starts and nothing else is ever used,
+   * and the wash underneath is this sound's own note slowed down to a crawl.
    *
    * The order comes out of the notes themselves - each one says how far along the set to step - so
    * the line never repeats and never leaves the sixteen. There is no beat: the gaps drift between a
@@ -2370,6 +2505,10 @@
     G('wind-chimes-bamboe', 'Bamboo chimes', 'wind', 'Hollow wooden knocking, hardly any ring at all', windChimes, { material: 'bamboo', root: 65, tubes: 6, scale: 'penta', breeze: 0.35 }, 1.7, 0.1),
     G('zee-strand', 'Waves on the shore', 'zee', 'Gentle surf', waves, { size: 0.5 }, 0.75, 0.1),
     G('zee-woelig', 'Rough sea', 'zee', 'Big waves against the rocks', waves, { size: 1 }, 0.62, 0.08),
+    G('zee-onderwater', 'Under the surface', 'zee', 'Muffled water, bubbles, and the swell breathing above you', onderwater, { depth: 0.35, bubbles: 0.55, swell: 0.85 }, 1.65, 0.08),
+    G('zee-diepzee', 'Deep water', 'zee', 'Dark and still, with something big groaning a long way off', onderwater, { depth: 1, bubbles: 0.15, swell: 0.15, groan: 0.7 }, 1.5, 0.1),
+    G('zee-rif', 'Coral reef', 'zee', 'The crackle of snapping shrimp from every side', onderwater, { depth: 0.4, bubbles: 0.35, swell: 0.4, shrimp: 0.8 }, 1.47, 0.06),
+    G('zee-duiken', 'Diving', 'zee', 'Your own breathing through a regulator, bubbles rising past your ears', onderwater, { depth: 0.55, bubbles: 0.3, swell: 0.5, regulator: 1 }, 1.44, 0.08),
     G('water-beek', 'Mountain stream', 'water', 'Fast, bubbling water', stream, { speed: 0.7 }, 1.9, 0.12),
     G('water-riviertje', 'Lazy river', 'water', 'Slow and wide', stream, { speed: 0.3 }, 2.1, 0.12),
     G('vuur-haard', 'Crackling fireplace', 'vuur', 'A wood fire that snaps and pops', fire, { size: 0.6 }, 1.9, 0.1),
@@ -2395,7 +2534,7 @@
     G('muziek-schemering', 'Dusk', 'muziek', 'Dark minor chords, no sparkle', pads, { scale: 'minor', root: 43, warmth: 0.35, sparkle: false, chordLen: [11, 18] }, 0.99, 0),
     G('muziek-winterpiano', 'Winter piano', 'muziek', 'Sparse piano notes over a pad', piano, { scale: 'penta', root: 60, tempo: 1 }, 1.18, 0),
     G('muziek-nachtpiano', 'Piano at night', 'muziek', 'Slow minor notes with a long reverb', piano, { scale: 'mpenta', root: 57, tempo: 0.7 }, 1.32, 0),
-    G('muziek-zestien-noten', 'Sixteen notes', 'muziek', 'Sixteen notes and an algorithm, after the Atari piece Jarre let run for forty-seven minutes', zestienNoten, { scale: 'mpenta', root: 41 }, 1.41, 0),
+    G('muziek-zestien-noten', 'Sixteen notes', 'muziek', 'Sixteen notes and an algorithm that never runs out of ways to order them', zestienNoten, { scale: 'mpenta', root: 41 }, 1.41, 0),
     G('muziek-zestien-diep', 'Sixteen notes, deep', 'muziek', 'The same sixteen, an octave lower and slower still', zestienNoten, { scale: 'mpenta', root: 34, pace: 0.7 }, 1.57, 0),
     G('muziek-zestien-licht', 'Sixteen notes, open', 'muziek', 'Sixteen notes in a major pentatonic, higher and a little more often', zestienNoten, { scale: 'penta', root: 48, pace: 1.4, drone: false }, 5.4, 0),
     G('jazz-piano', 'Piano jazz', 'jazz', 'An unhurried grand with bass and brushes, never in the way', jazzCombo, { bpm: 84, changes: 'ballade', feel: 'ballad', lead: 'grand', comp: 'grand', leadDensity: 0.55, drumLevel: 0.7 }, 0.73, 0.06),
