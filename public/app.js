@@ -929,7 +929,7 @@
     $('#update-later').addEventListener('click', () => { $('#update-bar').hidden = true; });
   }
 
-  window.hushfall = { engine, visuals, get library() { return library; } }; // voor debuggen
+  window.hushfall = { engine, visuals, startMix, get library() { return library; } }; // voor debuggen
 
   // ---- Start --------------------------------------------------------------------------
   renderNoise(); renderRadio(); renderTimerPresets(); renderVolumeMixer($('#settings-mixer')); syncVolumeUI();

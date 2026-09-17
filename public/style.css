@@ -94,6 +94,9 @@ section.row { margin-bottom: 8px; }
 .cards::-webkit-scrollbar { height: 6px; }
 .card {
   position: relative; flex: 0 0 auto; width: 200px; height: 250px; border-radius: 16px; overflow: hidden; scroll-snap-align: start;
+  /* A row holds hundreds of cards and each drawing is a hundred SVG shapes. Without this the browser
+     lays out and paints every one of them, on every frame, including the ones far outside the window. */
+  content-visibility: auto; contain-intrinsic-size: 200px 250px;
   text-align: left; padding: 0; background: var(--ink-2); box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
   transition: transform 0.25s cubic-bezier(.2,.8,.2,1), box-shadow 0.25s; outline: 2px solid transparent; outline-offset: -2px;
 }
@@ -104,17 +107,19 @@ section.row { margin-bottom: 8px; }
 .card .art svg { width: 100%; height: 100%; display: block; transition: transform 0.6s ease; }
 .card .badge { display: none; }
 /* Hushfall's own sounds get a small mark */
-.card.own .badge { display: block; position: absolute; top: 10px; right: 10px; font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; padding: 3px 9px; border-radius: 20px; background: var(--accent-soft); border: 1px solid var(--accent-line); color: var(--accent); backdrop-filter: blur(6px); }
+.card.own .badge { display: block; position: absolute; top: 10px; right: 10px; font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; padding: 3px 9px; border-radius: 20px; background: var(--accent-soft); border: 1px solid var(--accent-line); color: var(--accent); }
 .own-tag { color: var(--accent); border-bottom: 1px dotted var(--accent-line); }
-.card .label { position: absolute; left: 0; right: 0; bottom: 0; height: 74px; padding: 12px 14px; background: rgba(16, 13, 20, 0.72); backdrop-filter: blur(10px); border-top: 1px solid var(--line); }
+.card .label { position: absolute; left: 0; right: 0; bottom: 0; height: 74px; padding: 12px 14px; background: rgba(16, 13, 20, 0.88); border-top: 1px solid var(--line); }
 .card .label .t { font: 500 16px/1.2 var(--serif); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .card .label .s { font-size: 12px; color: var(--muted); margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .card .eq { display: none; }
 .card.playing .eq { position: absolute; right: 12px; bottom: 84px; display: flex; gap: 3px; align-items: flex-end; height: 16px; }
-.card.playing .eq i { width: 3px; background: var(--accent); border-radius: 2px; animation: eq 1s ease-in-out infinite; }
+.card.playing .eq i { width: 3px; height: 16px; transform-origin: bottom; background: var(--accent); border-radius: 2px; animation: eq 1s ease-in-out infinite; }
 .card.playing .eq i:nth-child(2) { animation-delay: 0.2s; } .card.playing .eq i:nth-child(3) { animation-delay: 0.4s; }
-@keyframes eq { 0%, 100% { height: 5px; } 50% { height: 16px; } }
-.card.mix { width: 260px; }
+/* Scaling instead of growing: a height that changes makes the browser lay the page out again, sixty
+   times a second, across a page that holds tens of thousands of elements. */
+@keyframes eq { 0%, 100% { transform: scaleY(0.3); } 50% { transform: scaleY(1); } }
+.card.mix { width: 260px; contain-intrinsic-size: 260px 250px; }
 .card.mix .dots { position: absolute; left: 12px; top: 12px; display: flex; gap: 5px; }
 .card.mix .dots i { width: 10px; height: 10px; border-radius: 50%; border: 1.5px solid rgba(16,13,20,0.6); }
 .card.mix .label .t { font-style: italic; }
@@ -231,7 +236,7 @@ code { background: rgba(244,235,221,0.1); padding: 2px 6px; border-radius: 6px; 
 .player-text .sub { font-size: 12.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
 .meter { display: none; gap: 3px; align-items: flex-end; height: 18px; margin-left: 6px; flex: 0 0 auto; }
 .player.playing .meter { display: flex; }
-.meter i { width: 3px; background: var(--accent); border-radius: 2px; animation: eq 1.1s ease-in-out infinite; }
+.meter i { width: 3px; height: 18px; transform-origin: bottom; background: var(--accent); border-radius: 2px; animation: eq 1.1s ease-in-out infinite; }
 .meter i:nth-child(2) { animation-delay: 0.15s; } .meter i:nth-child(3) { animation-delay: 0.3s; } .meter i:nth-child(4) { animation-delay: 0.45s; }
 .player-center { display: flex; align-items: center; gap: 12px; }
 .icon-btn { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; color: var(--muted); transition: background 0.2s, color 0.2s; }
@@ -310,9 +315,13 @@ body.immersive-on .app { opacity: 0; pointer-events: none; transition: opacity 0
    point at nothing, so a page full of cards stays calm; point at a mood and you see straight away
    what it is about: rain falling, steam coming off the coffee, sparks rising.
    The turning picture in the player always moves along with whatever is playing. */
-.beweeg > * { animation-iteration-count: infinite; animation-timing-function: linear; animation-play-state: paused; will-change: transform, opacity; }
+.beweeg > * { animation-iteration-count: infinite; animation-timing-function: linear; animation-play-state: paused; }
+/* will-change belongs only on what is moving at this moment. Put it on every moving part of every
+   card and the browser prepares a separate layer for each - six thousand of them - and then spends
+   a tenth of a second per frame sorting those layers out. That is what made the sound stutter:
+   picture work and sound share one process. */
 .card:hover .beweeg > *, .card:focus-visible .beweeg > *, .card.playing .beweeg > *,
-.player.playing .thumb .beweeg > *, .immersive .beweeg > * { animation-play-state: running; }
+.player.playing .thumb .beweeg > *, .immersive .beweeg > * { animation-play-state: running; will-change: transform, opacity; }
 @media (prefers-reduced-motion: reduce) { .beweeg > * { animation: none !important; } }
 @keyframes val    { 0% { transform: translateY(-30px); opacity: 0; } 12% { opacity: 1; } 88% { opacity: 1; } 100% { transform: translateY(150px); opacity: 0; } }
 @keyframes stijg  { 0% { transform: translateY(24px) scaleX(0.7); opacity: 0; } 22% { opacity: 1; } 100% { transform: translateY(-96px) scaleX(1.6); opacity: 0; } }
