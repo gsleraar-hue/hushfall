@@ -40,10 +40,21 @@ function radioAdressen(url) {
         this.mix.connect(this.fade).connect(this.master).connect(this.mute).connect(ctx.destination);
         this.tapPoint = this.fade;
         this.bus = {};
-        for (const b of ['main', 'fx', 'noise']) {
-          this.bus[b] = ctx.createGain();
-          this.bus[b].connect(this.mix);
-        }
+        for (const b of ['main', 'fx', 'noise']) this.bus[b] = ctx.createGain();
+        // One compressor and one room reverb for all layers together, instead of a pair per layer.
+        // Both are among the most expensive nodes there are — a compressor costs roughly three per
+        // cent of a processor core and a small reverb five — and Web Audio renders everything on a
+        // single core, so four layers used to spend a third of a core on copies of the same two
+        // nodes. Each layer still decides how much reverb it sends, and the send is taken after that
+        // layer's own volume, so turning a layer down turns its reverb down with it.
+        const comp = ctx.createDynamicsCompressor();
+        comp.threshold.value = -20; comp.knee.value = 14; comp.ratio.value = 2.4; comp.attack.value = 0.008; comp.release.value = 0.28;
+        comp.connect(this.mix);
+        this.bus.main.connect(comp); this.bus.fx.connect(comp);
+        this.bus.noise.connect(this.mix);   // ruis is al gelijkmatig en heeft geen compressor nodig
+        const galm = ctx.createConvolver();
+        try { galm.buffer = window.HushfallSynth.roomImpulse(ctx); galm.connect(this.mix); } catch { /* dan maakt de laag zelf galm */ }
+        ctx.__hushfallGedeeld = { comp, galm };
         this.applyVolumes();
       }
       if (this.ctx.state === 'suspended') this.ctx.resume();

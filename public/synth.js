@@ -628,7 +628,12 @@
     const som = gainNode(ctx, 1); const env = gainNode(ctx, 0); const dofLp = filt(ctx, 'lowpass', dof, 0.8);
     chain(som, env, dofLp, panNode(ctx, pan), out);
     const src = ctx.createOscillator(); src.setPeriodicWave(stemGolf(ctx)); src.frequency.value = f0;
-    const bp = [0, 1, 2].map((i) => {
+    // A mouth keeps rendering even while its owner says nothing, so every filter in it is paid for
+    // the whole time. Someone across the room is already muffled to about two kilohertz, which means
+    // a third formant at 2500 Hz is filtered away again the moment it is made — so distant voices
+    // get two instead of three. You cannot pick out a far-off voice's vowels anyway.
+    const banden = dof < 2200 ? 2 : 3;
+    const bp = [0, 1, 2].slice(0, banden).map((i) => {
       const b = filt(ctx, 'bandpass', [500, 1400, 2500][i], i === 0 ? 7 : 9);
       chain(b, gainNode(ctx, [1, 0.5, 0.22][i]), som); src.connect(b); return b;
     });
@@ -644,7 +649,7 @@
   function lettergreep(ctx, m, { t, f0, dur, klinker, gain = 0.1, sluit = false, pan = 0 }) {
     m.src.frequency.setValueAtTime(f0 * rnd(0.97, 1.03), t);
     m.src.frequency.linearRampToValueAtTime(f0 * rnd(0.9, 1.08), t + dur); // contour binnen de lettergreep
-    for (let i = 0; i < 3; i++) m.bp[i].frequency.setTargetAtTime(klinker[i] * rnd(0.95, 1.05), Math.max(0, t - 0.04), 0.035);
+    for (let i = 0; i < m.bp.length; i++) m.bp[i].frequency.setTargetAtTime(klinker[i] * rnd(0.95, 1.05), Math.max(0, t - 0.04), 0.035);
     const aan = sluit ? 0.008 : 0.03; // consonant-achtige start of zachte inzet
     m.env.gain.setValueAtTime(0, t);
     m.env.gain.linearRampToValueAtTime(gain, t + aan);
@@ -668,7 +673,10 @@
     const galm = reverb(ctx, out, 'irRoom', 0.35);
     // Every speaker keeps a mouth of their own: that is created once, and the syllables after that
     // are nothing but automation. See mond().
-    const sprekers = Array.from({ length: Math.round(3 + busy * 6) }, (_, i) => {
+    // Fewer mouths than before, because each one renders the whole time it exists. Past a handful
+    // the extra voices stop reading as individuals and become murmur, which the noise bed above
+    // already provides for almost nothing. A busy room went from eight mouths to six.
+    const sprekers = Array.from({ length: Math.round(2.5 + busy * 4) }, (_, i) => {
       const nabij = i < 2 ? rnd(0.75, 1) : rnd(0.2, 0.6);
       const f0 = R() < 0.45 ? rnd(165, 240) : rnd(95, 140); // hogere en lagere stemmen
       const pan = rnd(-0.95, 0.95);
@@ -942,8 +950,58 @@
       burst(ctx, out, { t, dur: dur * 0.9, color: 'pink', type: 'bandpass', freq: rnd(1400, 2400), Q: 0.9, gain: gain * 0.12 * breath, attack: aan, pan });
     }
   }
+  /**
+   * Pre-rendered one-shot voices.
+   *
+   * A struck or plucked note has a fixed timbre: only pitch and loudness change. Building it from
+   * oscillators means five or six of them, each with an envelope, ringing for seconds — fifteen live
+   * nodes per note, and at ten notes a second that is hundreds the audio thread has to keep
+   * rendering. Measured on 200 sounding piano notes: as oscillators 2.12 of a processor core, as
+   * buffers 0.31. Web Audio renders everything on a single core, so that factor of seven is the
+   * difference between a mix that plays and one that stutters.
+   *
+   * A few base pitches are rendered so the playback rate never has to stretch more than about half
+   * an octave, and a couple of variants per pitch keep the small random differences between notes.
+   * Rendering is asynchronous; until the buffers are there the original oscillator path is used,
+   * which lasts a second or two after a sound starts.
+   */
+  const shotCache = new WeakMap();
+  function oneShot(ctx, name, { bases, variants = 2, dur, render }) {
+    let per = shotCache.get(ctx);
+    if (!per) { per = new Map(); shotCache.set(ctx, per); }
+    let slot = per.get(name);
+    if (slot) return slot;
+    slot = { bases, dur, buffers: new Map() };
+    per.set(name, slot);
+    for (const base of bases) {
+      const lijst = []; slot.buffers.set(base, lijst);
+      for (let i = 0; i < variants; i++) {
+        try {
+          const off = new OfflineAudioContext(1, Math.ceil(ctx.sampleRate * (dur + 0.4)), ctx.sampleRate);
+          render(off, off.destination, midi(base), dur);
+          off.startRendering().then((b) => lijst.push(b)).catch(() => { /* val terug op oscillatoren */ });
+        } catch { /* val terug op oscillatoren */ }
+      }
+    }
+    return slot;
+  }
+  /** Speelt een voorgerenderde noot. Geeft false als de buffers er nog niet zijn. */
+  function playShot(ctx, out, slot, { t, freq, gain = 0.1, pan = 0 }) {
+    let beste = slot.bases[0], afstand = Infinity;
+    for (const b of slot.bases) { const d = Math.abs(Math.log2(freq / midi(b))); if (d < afstand) { afstand = d; beste = b; } }
+    const lijst = slot.buffers.get(beste);
+    if (!lijst || !lijst.length) return false;
+    const s = ctx.createBufferSource();
+    s.buffer = lijst[Math.floor(R() * lijst.length)];
+    s.playbackRate.value = freq / midi(beste);
+    const g = gainNode(ctx, gain);
+    chain(s, g, panNode(ctx, pan), out);
+    s.start(t);
+    return true;
+  }
+
   /** Vibraphone: a soft bell sound with tremolo. */
-  const vibeNote = (ctx, out, { t, freq, gain = 0.09, pan = 0, dur = 2.2 }) => {
+  const vibeNoteRaw = (ctx, out, { t, freq, gain = 0.09, pan = 0, dur = 2.2 }) => {
     const trem = ctx.createOscillator(); trem.frequency.value = rnd(4.5, 6); const tg = gainNode(ctx, 0.28);
     const body = gainNode(ctx, 0); chain(trem, tg, body.gain); trem.start(t); trem.stop(t + dur + 0.2);
     body.gain.setValueAtTime(0, t); body.gain.linearRampToValueAtTime(gain, t + 0.006); body.gain.exponentialRampToValueAtTime(0.0004, t + dur);
@@ -955,7 +1013,7 @@
     }
   };
   /** Grand piano: a strike with plenty of overtones that fade faster than the fundamental. */
-  const grandNote = (ctx, out, { t, freq, gain = 0.09, pan = 0, dur = 2.6 }) => {
+  const grandNoteRaw = (ctx, out, { t, freq, gain = 0.09, pan = 0, dur = 2.6 }) => {
     burst(ctx, out, { t, dur: 0.008, color: 'white', type: 'bandpass', freq: Math.min(9000, freq * 8), Q: 1.1, gain: gain * 0.28, attack: 0.0008, pan });
     const bus = panNode(ctx, pan); bus.connect(out); // één panner per noot in plaats van per boventoon
     for (const [ratio, amp, len] of [[1, 1, 1], [2, 0.42, 0.72], [3, 0.16, 0.5], [4, 0.08, 0.34], [5.05, 0.045, 0.22]]) {
@@ -967,7 +1025,7 @@
     }
   };
   /** Nylon string: a strike plus fast-fading overtones. */
-  const nylonNote = (ctx, out, { t, freq, gain = 0.09, pan = 0, dur = 1.6 }) => {
+  const nylonNoteRaw = (ctx, out, { t, freq, gain = 0.09, pan = 0, dur = 1.6 }) => {
     burst(ctx, out, { t, dur: 0.012, color: 'white', type: 'bandpass', freq: freq * 4, Q: 1.4, gain: gain * 0.5, attack: 0.001, pan });
     const bus = panNode(ctx, pan); bus.connect(out);
     for (const [ratio, amp, len] of [[1, 1, 1], [2, 0.42, 0.6], [3, 0.2, 0.4], [4, 0.1, 0.25]]) {
@@ -979,9 +1037,29 @@
     }
   };
   /** Double bass: a warm, short tone with a hint of attack. */
-  const uprightNote = (ctx, out, { t, freq, dur = 0.5, gain = 0.2, pan = -0.1 }) => {
+  const uprightNoteRaw = (ctx, out, { t, freq, dur = 0.5, gain = 0.2, pan = -0.1 }) => {
     burst(ctx, out, { t, dur: 0.02, color: 'pink', type: 'bandpass', freq: freq * 6, Q: 1.2, gain: gain * 0.22, attack: 0.002, pan });
     tone(ctx, out, { t, freq, dur: dur * 0.75, release: 0.22, gain, attack: 0.014, pan, type: 'triangle', partials: [[1, 1], [2, 0.22], [3, 0.06]], lowpass: 420 });
+  };
+
+  // The four voices above as pre-rendered samples. The note length is baked into the sample, so a
+  // caller's `dur` only still steers the fallback; for struck and plucked strings that is right
+  // anyway — a piano note decays the way it decays, whatever the score asks for.
+  const vibeNote = (ctx, out, o) => {
+    const slot = oneShot(ctx, 'vibes', { bases: [60, 72, 84], dur: 2.6, render: (c, d, f, dur) => vibeNoteRaw(c, d, { t: 0, freq: f, gain: 1, pan: 0, dur }) });
+    if (!playShot(ctx, out, slot, o)) vibeNoteRaw(ctx, out, o);
+  };
+  const grandNote = (ctx, out, o) => {
+    const slot = oneShot(ctx, 'grand', { bases: [45, 57, 69, 81], dur: 3.2, render: (c, d, f, dur) => grandNoteRaw(c, d, { t: 0, freq: f, gain: 1, pan: 0, dur }) });
+    if (!playShot(ctx, out, slot, o)) grandNoteRaw(ctx, out, o);
+  };
+  const nylonNote = (ctx, out, o) => {
+    const slot = oneShot(ctx, 'nylon', { bases: [52, 64, 76], dur: 1.8, render: (c, d, f, dur) => nylonNoteRaw(c, d, { t: 0, freq: f, gain: 1, pan: 0, dur }) });
+    if (!playShot(ctx, out, slot, o)) nylonNoteRaw(ctx, out, o);
+  };
+  const uprightNote = (ctx, out, o) => {
+    const slot = oneShot(ctx, 'upright', { bases: [33, 45], dur: 0.9, render: (c, d, f, dur) => uprightNoteRaw(c, d, { t: 0, freq: f, gain: 1, pan: 0, dur }) });
+    if (!playShot(ctx, out, slot, { pan: -0.1, ...o })) uprightNoteRaw(ctx, out, o);
   };
   /** Brushed drums: a sweeping movement on the snare plus soft accents. */
   function brushes(ctx, out, sched, beat, { swing = 0.62, ride = true, level = 1 }) {
@@ -1809,6 +1887,50 @@
       lg.connect(o.detune); o.connect(bron); o.start(t); o.stop(t + dur + 0.3);
     }
   }
+  /**
+   * A whole chord of the choir through one shared formant bank.
+   *
+   * Four parts singing the same syllable have the same mouth shape, and formants do not move with
+   * pitch, so one set of filters serves all of them — which is also how a choir actually works. Built
+   * per part it came to about sixty nodes for one chord, all sounding for seconds; shared it is a
+   * little over twenty. Measured on two choirs at once the audio clock went from twenty per cent
+   * behind to keeping up. Each part keeps its own envelope and its own pair of detuned sources, so
+   * the voices still drift against each other.
+   */
+  function koorAkkoord(ctx, out, { t, stemmen, dur, vowel = 0, pan = 0 }) {
+    const klinker = [[700, 1150, 2600], [350, 800, 2400], [500, 1500, 2500]][vowel] || [700, 1150, 2600];
+    const som = gainNode(ctx, 1);
+    chain(som, panNode(ctx, pan), out);
+    const bron = gainNode(ctx, 1);
+    klinker.forEach((f, i) => {
+      const bp = filt(ctx, 'bandpass', f * rnd(0.96, 1.04), i === 0 ? 5.5 : 8);
+      chain(bp, gainNode(ctx, [1, 0.45, 0.18][i]), som); bron.connect(bp);
+    });
+    chain(bron, gainNode(ctx, 0.13), som);
+    const lfo = ctx.createOscillator(); lfo.frequency.value = rnd(4.4, 6);
+    const lg = gainNode(ctx, 0); lg.gain.setValueAtTime(0, t);
+    lg.gain.linearRampToValueAtTime(rnd(5, 11), t + Math.min(0.9, dur * 0.6));
+    chain(lfo, lg); lfo.start(t); lfo.stop(t + dur + 0.3);
+    for (const { freq, gain } of stemmen) {
+      const env = gainNode(ctx, 0);
+      env.gain.setValueAtTime(0, t);
+      env.gain.linearRampToValueAtTime(gain * 0.82, t + Math.min(0.2, dur * 0.2));
+      env.gain.linearRampToValueAtTime(gain, t + Math.min(0.4, dur * 0.35));
+      env.gain.setTargetAtTime(gain * rnd(0.88, 1.04), t + Math.min(0.4, dur * 0.35), dur * 0.4);
+      env.gain.setValueAtTime(gain * 0.95, t + dur * 0.78);
+      env.gain.exponentialRampToValueAtTime(0.0004, t + dur + 0.3);
+      env.connect(bron);
+      for (const det of [-6, 7]) {
+        const o = ctx.createOscillator(); o.setPeriodicWave(stemGolf(ctx)); o.detune.value = det + rnd(-4, 4);
+        const f0 = freq * rnd(0.997, 1.003);
+        o.frequency.setValueAtTime(f0 * rnd(0.94, 0.985), t);          // van onderaf inzetten
+        o.frequency.exponentialRampToValueAtTime(f0, t + rnd(0.07, 0.18));
+        let jt = t + 0.25;
+        for (let k = 0; k < 10 && jt < t + dur; k++) { o.frequency.setTargetAtTime(f0 * rnd(0.994, 1.006), jt, 0.1); jt += rnd(0.18, 0.5); }
+        lg.connect(o.detune); o.connect(env); o.start(t); o.stop(t + dur + 0.3);
+      }
+    }
+  }
   /** Christmas choir: well-known carols, in four parts, in a church-like space. */
   function kerstkoor(ctx, out, { orgel = false }) {
     const sched = new Sched(ctx); const rev = reverb(ctx, out, 'irLong', 0.62);
@@ -1823,8 +1945,9 @@
       () => { const c = CAROLS[order[ci % order.length]]; ci++; root = 60 + pick([0, -2, 2, -4]); beat = 60 / (c.bpm * 0.82); return c.notes.slice(); }, // koren zingen rustiger
       (t, [semi, beats]) => {
         const dur = beats * beat;
-        koorStem(ctx, rev, { t, freq: midi(root + semi), dur, gain: 0.075, pan: rnd(-0.15, 0.15), vowel: 0 });
-        hymneAkkoord(semi).forEach((s, i) => koorStem(ctx, rev, { t: t + rnd(0, 0.04), freq: midi(root + s - 12 - (i === 0 ? 12 : 0)), dur, gain: i === 0 ? 0.05 : 0.038, pan: (i - 1) * 0.45, vowel: i === 0 ? 1 : 2 }));
+        const stemmen = [{ freq: midi(root + semi), gain: 0.075 }];
+        hymneAkkoord(semi).forEach((s, i) => stemmen.push({ freq: midi(root + s - 12 - (i === 0 ? 12 : 0)), gain: i === 0 ? 0.05 : 0.038 }));
+        koorAkkoord(ctx, rev, { t, stemmen, dur, vowel: 0, pan: rnd(-0.15, 0.15) });
         return dur;
       },
       () => rnd(6, 12));
@@ -1834,18 +1957,21 @@
   function carillon(ctx, out, { snow = true }) {
     const sched = new Sched(ctx); const rev = reverb(ctx, out, 'irLong', 0.6); const nodes = [];
     if (snow) { const w = wind(ctx, out, { strength: 0.25, trees: false }); nodes.push(w); }
-    const bel = (t, n, gain) => {
-      const f = midi(n);
+    const belRaw = (uitCtx, uit, { t, freq: f, gain }) => {
       // The clapper hitting the bronze: a short metal slap before the tone sets in. Without that strike
       // a bell sounds like an organ pipe.
-      burst(ctx, rev, { t, dur: 0.025, color: 'white', type: 'bandpass', freq: f * rnd(4, 9), Q: 1.2, gain: gain * 0.45, attack: 0.0008, pan: rnd(-0.3, 0.3) });
+      burst(uitCtx, uit, { t, dur: 0.025, color: 'white', type: 'bandpass', freq: f * rnd(4, 9), Q: 1.2, gain: gain * 0.45, attack: 0.0008, pan: rnd(-0.3, 0.3) });
       for (const [ratio, amp, len] of [[0.5, 0.35, 1], [1, 1, 0.9], [1.19, 0.3, 0.55], [1.5, 0.22, 0.45], [2, 0.4, 0.5], [2.5, 0.12, 0.3], [3.01, 0.09, 0.22]]) {
-        const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.value = f * ratio;
-        const g = gainNode(ctx, 0); const dur = rnd(2.2, 4) * len;
+        const o = uitCtx.createOscillator(); o.type = 'sine'; o.frequency.value = f * ratio;
+        const g = gainNode(uitCtx, 0); const dur = rnd(2.2, 4) * len;
         g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(gain * amp, t + 0.004);
         g.gain.exponentialRampToValueAtTime(0.0003, t + dur);
-        chain(o, g, panNode(ctx, rnd(-0.3, 0.3)), rev); o.start(t); o.stop(t + dur + 0.05);
+        chain(o, g, panNode(uitCtx, rnd(-0.3, 0.3)), uit); o.start(t); o.stop(t + dur + 0.05);
       }
+    };
+    const belSlot = oneShot(ctx, 'carillon', { bases: [60, 72, 84], dur: 4.2, render: (c, d, f) => belRaw(c, d, { t: 0, freq: f, gain: 1 }) });
+    const bel = (t, n, gain) => {
+      if (!playShot(ctx, rev, belSlot, { t, freq: midi(n), gain, pan: rnd(-0.3, 0.3) })) belRaw(ctx, rev, { t, freq: midi(n), gain });
     };
     let order = Object.keys(CAROLS).sort(() => R() - 0.5), ci = 0;
     let root = 72, beat = 0.6;
@@ -2025,10 +2151,15 @@
   /** Music box: christmas melodies with clear, quickly fading tones; little bells and a soft pad in between. */
   function musicBox(ctx, out, { bells = true, pad = true }) {
     const sched = new Sched(ctx); const rev = reverb(ctx, out, 'irLong', 0.5);
+    // The tooth plucking the comb. Without that pluck it is a glockenspiel, not a music box.
+    const voiceRaw = (uitCtx, uit, { t, freq, gain, pan = 0, release = 1.8 }) => {
+      burst(uitCtx, uit, { t, dur: 0.01, color: 'white', type: 'bandpass', freq: rnd(2200, 4500), Q: 2, gain: gain * 0.5, attack: 0.0006, pan });
+      tone(uitCtx, uit, { t, freq, dur: 0.02, release, gain, attack: 0.002, pan, partials: [[1, 1], [3, 0.35], [5.1, 0.12], [8.9, 0.05]], type: 'sine' });
+    };
+    const voiceSlot = oneShot(ctx, 'musicbox', { bases: [72, 84], dur: 2.4, render: (c, d, f) => voiceRaw(c, d, { t: 0, freq: f, gain: 1, release: 2 }) });
     const voice = (t, n, dur, gain = 0.12, pan = 0) => {
-      // The tooth plucking the comb. Without that pluck it is a glockenspiel, not a music box.
-      burst(ctx, rev, { t, dur: 0.01, color: 'white', type: 'bandpass', freq: rnd(2200, 4500), Q: 2, gain: gain * 0.5, attack: 0.0006, pan });
-      tone(ctx, rev, { t, freq: midi(n), dur: 0.02, release: Math.min(2.2, dur * 1.6 + 0.6), gain, attack: 0.002, pan, partials: [[1, 1], [3, 0.35], [5.1, 0.12], [8.9, 0.05]], type: 'sine' });
+      if (playShot(ctx, rev, voiceSlot, { t, freq: midi(n), gain, pan })) return;
+      voiceRaw(ctx, rev, { t, freq: midi(n), gain, pan, release: Math.min(2.2, dur * 1.6 + 0.6) });
     };
     const nodes = [];
     // The movement itself: the cylinder turning, soft and with a slight irregularity.
@@ -2065,7 +2196,12 @@
   function piano(ctx, out, { scale = 'penta', root = 60, tempo = 1 }) {
     const sched = new Sched(ctx); const sc = SCALES[scale]; const rev = reverb(ctx, out, 'irLong', 0.45);
     const p = pads(ctx, out, { scale: scale === 'mpenta' ? 'minor' : 'major', root: root - 12, warmth: 0.4, sparkle: false, chordLen: [10, 16], voices: 3 });
-    const note = (t, n, gain) => tone(ctx, rev, { t, freq: midi(n), dur: 0.05, release: rnd(2, 3.5), gain, attack: 0.004, pan: (n - root) / 24, partials: [[1, 1], [2, 0.5], [3, 0.2], [4, 0.1], [5, 0.05]], lowpass: 3200 });
+    const noteRaw = (uitCtx, uit, { t, freq, gain, pan }) => tone(uitCtx, uit, { t, freq, dur: 0.05, release: rnd(2, 3.5), gain, attack: 0.004, pan, partials: [[1, 1], [2, 0.5], [3, 0.2], [4, 0.1], [5, 0.05]], lowpass: 3200 });
+    const noteSlot = oneShot(ctx, 'pianoNote', { bases: [48, 60, 72], dur: 3.6, render: (c, d, f) => noteRaw(c, d, { t: 0, freq: f, gain: 1, pan: 0 }) });
+    const note = (t, n, gain) => {
+      const pan = (n - root) / 24;
+      if (!playShot(ctx, rev, noteSlot, { t, freq: midi(n), gain, pan })) noteRaw(ctx, rev, { t, freq: midi(n), gain, pan });
+    };
     let last = 2;
     sched.every(() => rnd(1.2, 4.5) / tempo, (t) => {
       const steps = Math.round(rnd(1, 4)); let tt = t;
@@ -2176,23 +2312,44 @@
   window.HushfallSynth = {
     list: LIST,
     setLicht(aan) { lichteModus = !!aan; },
+    /** De kamergalm, zodat de motor er één kan maken voor alle lagen samen. */
+    roomImpulse: (ctx) => buffers(ctx).irRoom,
     create(id, ctx, out) {
       const g = LIST.find((x) => x.id === id);
       if (!g) throw new Error('Onbekende generator ' + id);
       // Balance, a gentle compressor (which keeps single ticks from jumping out) and some room acoustic:
       // outdoor sounds are never bone dry, and that makes a big difference to how real it sounds.
-      const comp = ctx.createDynamicsCompressor();
-      comp.threshold.value = -20; comp.knee.value = 14; comp.ratio.value = 2.4; comp.attack.value = 0.008; comp.release.value = 0.28;
-      comp.connect(out);
-      const galm = g.space > 0 && !lichteModus;
-      const dest = galm ? reverb(ctx, comp, 'irRoom', g.space) : comp;
+      //
+      // Both of those used to be built per layer, and both are expensive: a compressor costs about
+      // three per cent of a processor core and a room reverb five, so four layers spent a third of a
+      // core on nothing but copies of the same two nodes. The engine now offers one of each, shared
+      // by every layer (`gedeeld`). A layer only still makes its own when nothing is offered, which
+      // is what the measurement harness and the browser version do.
+      const gedeeld = ctx.__hushfallGedeeld;
+      const opruimen = [];
+      let dest;
+      if (gedeeld) {
+        dest = out;                                // droog rechtstreeks naar de laag; de compressor staat op de bus
+        if (g.space > 0 && !lichteModus) {
+          // De send takt af ná `out`, de versterker van de laag zelf, zodat het volume en het
+          // in- en uitfaden van die laag ook voor zijn galm gelden.
+          const send = gainNode(ctx, g.space); out.connect(send); send.connect(gedeeld.galm);
+          opruimen.push(send);
+        }
+      } else {
+        const comp = ctx.createDynamicsCompressor();
+        comp.threshold.value = -20; comp.knee.value = 14; comp.ratio.value = 2.4; comp.attack.value = 0.008; comp.release.value = 0.28;
+        comp.connect(out);
+        dest = (g.space > 0 && !lichteModus) ? reverb(ctx, comp, 'irRoom', g.space) : comp;
+        opruimen.push(comp);
+      }
       // Without reverb you lose not only the tail but also the damping of the dry sound, and then
       // the sound jumps up by more than 3 dB the moment you switch on lite mode. We compensate for that,
       // so the switch only changes the space and not the volume.
       const droog = (g.space > 0 && lichteModus) ? 1 - g.space : 1;
       const lvl = gainNode(ctx, (g.level ?? 1) * droog); lvl.connect(dest);
       const gen = g.make(ctx, lvl, { ...g.params });
-      return { stop: () => { gen.stop(); setTimeout(() => { for (const n of [lvl, comp]) { try { n.disconnect(); } catch {} } }, 300); } };
+      return { stop: () => { gen.stop(); setTimeout(() => { for (const n of [lvl, ...opruimen]) { try { n.disconnect(); } catch {} } }, 300); } };
     },
   };
 })();
