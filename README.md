@@ -7,14 +7,18 @@ cinematic, city, music).
 
 The sounds come from two directions:
 
-1. **Hushfall's own sounds** (82 of them, `public/synth.js`): made live with Web Audio, so no files and no
+1. **Hushfall's own sounds** (85 of them, `public/synth.js`): made live with Web Audio, so no files and no
    looping. These are always in the app, right after installing too.
    - **Nature**: rain with individual resonating drops; a hearth fire in which every pop is a short burst of
      noise (a tuned pop sounds inescapably like popcorn) over a fine crackle that never falls silent; wind in
      which the gusts drive volume, colour, whistling and rustling together; surf in which every wave rolls in,
      breaks, hisses for seconds and pulls back over the sand, in sets of a few small ones and then a big one;
      a brook of separate bubbles; thunder rolling in irregular bouts; birdsong with harmonics and vibrato;
-     crickets and frogs.
+     crickets and frogs. Wind chimes too: a tube hanging free rings in transverse modes at roughly
+     1 : 2.76 : 5.40 : 8.93 times its fundamental, and those wide, inharmonic gaps are what make the ear
+     hear metal tubing rather than a sine. Where the clapper lands decides which modes speak, so no two
+     strikes have the same colour, and the clapper only moves when the wind does — so the strikes arrive
+     in gusty clusters with real silence in between. Aluminium rings for seconds, bamboo barely at all.
    - **People**: a café and a christmas market with real voices. Every speaker has their own pitch and pace
      and speaks vowels through formant filters, so you hear conversation without words. Plus cups, cutlery,
      chairs and the espresso machine. Traffic with a doppler effect: the pitch drops the moment a car is past,
@@ -126,7 +130,7 @@ This is deliberately a separate package, because the Store version behaves diffe
   `process.windowsStore`; there is no separate source code for it.
 - **Only sources that allow commercial use.** The BBC RemArc licence allows personal, educational and
   non-commercial use only, and the free Mixkit licences forbid redistribution. The Store version leaves those
-  two out (`STORE_BRONNEN` in `electron/main.cjs`) and keeps Creative Commons and public domain. The 82 own
+  two out (`STORE_BRONNEN` in `electron/main.cjs`) and keeps Creative Commons and public domain. The 85 own
   sounds are in there regardless.
 - **The tiles** come from `scripts/make-icon.js`, which writes six PNGs into `build/appx/` next to the icon.
 
@@ -164,7 +168,7 @@ under Settings › Visuals. That drops the per-sound room reverb and halves
 the particles. You measure this with an `OfflineAudioContext`: it renders as fast as the machine can, so
 render time divided by sound duration is exactly the fraction of a core a node really costs.
 
-`npm run dist` makes `dist/Hushfall Setup 1.0.0.exe` (installer) and `dist/Hushfall-portable.exe`. The 82 own
+`npm run dist` makes `dist/Hushfall Setup 1.0.0.exe` (installer) and `dist/Hushfall-portable.exe`. The 85 own
 sounds sit inside the exe and work right away. Recordings do not (that would be gigabytes); you add those
 through **Settings › Library**:
 
@@ -217,7 +221,7 @@ speaker is told over UPnP to play that station. No account, no cloud, everything
 
 | Source | What | Licence |
 | --- | --- | --- |
-| Hushfall itself (`public/synth.js`) | 82 own sounds and pieces of music, made live with Web Audio | part of this project |
+| Hushfall itself (`public/synth.js`) | 85 own sounds and pieces of music, made live with Web Audio | part of this project |
 | [BBC Sound Effects](https://sound-effects.bbcrewind.co.uk/) | 33,000+ recordings, among them thousands of atmospheres and nature recordings | RemArc licence: personal, educational and non-commercial use |
 | [Internet Archive](https://archive.org/) | field recordings (radio aporee among others) and ambient music from netlabels | Creative Commons, stated per recording |
 | [Great 78 Project](https://archive.org/details/georgeblood) | restored 78 rpm records: jazz, swing and christmas music from the 1920s to the 1950s | historical recordings, stated per record |

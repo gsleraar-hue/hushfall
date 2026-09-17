@@ -285,6 +285,77 @@
     return { stop: stopAll(nodes, sched, ctx) };
   }
   /**
+   * Wind chimes. A struck tube is not a bell and certainly not a sine. A tube hanging free rings in
+   * transverse modes at roughly 1 : 2.76 : 5.40 : 8.93 times its fundamental, and those wide,
+   * inharmonic gaps are exactly what makes the ear hear metal tubing. Where the clapper lands decides
+   * which modes speak, so no two strikes have the same colour. Aluminium rings for seconds; bamboo
+   * barely rings at all and is mostly the knock itself.
+   *
+   * The clapper only moves when the wind does, so strikes arrive in gusty clusters with real silence
+   * in between — a chime that tinkles steadily sounds like a toy. A gust usually catches several
+   * tubes in a row, and often the same tube twice.
+   */
+  function windChimes(ctx, out, { material = 'metal', root = 72, tubes = 6, scale = 'penta', breeze = 0.35 }) {
+    const sched = new Sched(ctx); const nodes = [];
+    if (breeze > 0) nodes.push(wind(ctx, out, { strength: breeze, trees: R() < 0.5 }));
+    const hal = reverb(ctx, out, 'irRoom', 0.22);
+
+    const bamboe = material === 'bamboo';
+    // Tuned to a pentatonic scale, the usual choice for chimes: no interval in it can clash.
+    const trappen = scale === 'minor' ? [0, 3, 5, 7, 10] : [0, 2, 4, 7, 9];
+    const buizen = Array.from({ length: tubes }, (_, i) => {
+      const st = trappen[i % trappen.length] + 12 * Math.floor(i / trappen.length);
+      return { freq: midi(root + st) * rnd(0.997, 1.003), pan: (i / Math.max(1, tubes - 1) - 0.5) * 1.4 };
+    });
+    // Free-free transverse modes. Bamboo is damped and barely carries the higher ones.
+    const MODES = bamboe ? [[1, 1, 1], [2.76, 0.25, 0.4]] : [[1, 1, 1], [2.756, 0.5, 0.55], [5.404, 0.22, 0.3], [8.933, 0.08, 0.16]];
+
+    const slag = (t, buis, kracht) => {
+      const uit = panNode(ctx, clamp(buis.pan + rnd(-0.12, 0.12), -1, 1)); uit.connect(hal);
+      // Where the clapper lands shifts the balance between the modes.
+      const plek = rnd(0.5, 1.4);
+      const basis = bamboe ? rnd(0.16, 0.34) : rnd(3.5, 8);
+      for (const [ratio, amp, len] of MODES) {
+        const o = ctx.createOscillator(); o.type = 'sine';
+        o.frequency.value = buis.freq * ratio * rnd(0.999, 1.001);
+        const g = gainNode(ctx, 0);
+        const dur = basis * len;
+        const top = 0.05 * kracht * amp * (ratio > 1 ? plek : 1) * rnd(0.85, 1.15);
+        g.gain.setValueAtTime(0, t);
+        g.gain.linearRampToValueAtTime(top, t + 0.002);
+        g.gain.exponentialRampToValueAtTime(0.0003, t + dur);
+        chain(o, g, uit); o.start(t); o.stop(t + dur + 0.05);
+      }
+      // The clapper itself: wood on metal is a short knock, and it is half of what you recognise.
+      burst(ctx, uit, {
+        t, dur: bamboe ? rnd(0.03, 0.07) : rnd(0.008, 0.02), color: 'white',
+        type: bamboe ? 'lowpass' : 'bandpass', freq: bamboe ? rnd(400, 900) : buis.freq * rnd(3, 7),
+        Q: bamboe ? 1.2 : 1.6, gain: 0.05 * kracht * (bamboe ? 1.6 : 1), attack: 0.0006,
+      });
+    };
+
+    // One gust variable drives everything, exactly as in wind(): how often the clapper reaches a
+    // tube, how many it catches and how hard.
+    let stoot = 0.3;
+    sched.every(() => rnd(2.5, 7), (t) => { stoot = clamp(stoot + rnd(-0.45, 0.5), 0.05, 1); });
+    sched.every(() => rnd(0.7, 5) / (0.15 + stoot * 1.5), (t) => {
+      const n = Math.round(rnd(1, 3 + stoot * 5));
+      let tt = t;
+      let vorige = -1;
+      for (let i = 0; i < n; i++) {
+        // Twice the same tube happens; three times in a row does not.
+        let k = Math.floor(R() * buizen.length);
+        if (k === vorige && R() < 0.6) k = (k + 1 + Math.floor(R() * (buizen.length - 1))) % buizen.length;
+        vorige = k;
+        const kracht = Math.pow(R(), 1.6) * (0.35 + stoot * 0.85);
+        const buis = buizen[k], slagT = tt;
+        sched.queue(slagT, () => slag(slagT, buis, kracht));
+        tt += rnd(0.05, 0.4) / (0.4 + stoot);
+      }
+    }, 2);
+    return { stop: stopAll(nodes, sched, ctx) };
+  }
+  /**
    * Surf. A wave is not a swell of noise but a series of events: first the rolling in,
    * then the slam of it breaking, then the fine hiss of the foam ringing on for seconds, and
    * finally the water pulling back over the sand. That hiss matters most: thousands of
@@ -2015,6 +2086,9 @@
     G('wind-bomen', 'Wind in the trees', 'wind', 'Rustling leaves and gusts', wind, { strength: 0.5, trees: true }, 2.4, 0.08),
     G('wind-storm', 'Gale', 'wind', 'Wind howling around the house', wind, { strength: 0.9, trees: false }, 0.96, 0.06),
     G('wind-bries', 'Light breeze', 'wind', 'Barely more than a breath', wind, { strength: 0.2, trees: true }, 2.14, 0.1),
+    G('wind-chimes', 'Wind chimes', 'wind', 'Tuned metal tubes on a porch, struck whenever the wind reaches them', windChimes, { material: 'metal', root: 72, tubes: 6, scale: 'penta', breeze: 0.3 }, 1.55, 0.08),
+    G('wind-chimes-diep', 'Deep chimes', 'wind', 'Long, heavy tubes with a slow ring, sparse and low', windChimes, { material: 'metal', root: 57, tubes: 5, scale: 'minor', breeze: 0.25 }, 1.68, 0.08),
+    G('wind-chimes-bamboe', 'Bamboo chimes', 'wind', 'Hollow wooden knocking, hardly any ring at all', windChimes, { material: 'bamboo', root: 65, tubes: 6, scale: 'penta', breeze: 0.35 }, 1.92, 0.1),
     G('zee-strand', 'Waves on the shore', 'zee', 'Gentle surf', waves, { size: 0.5 }, 0.75, 0.1),
     G('zee-woelig', 'Rough sea', 'zee', 'Big waves against the rocks', waves, { size: 1 }, 0.62, 0.08),
     G('water-beek', 'Mountain stream', 'water', 'Fast, bubbling water', stream, { speed: 0.7 }, 1.9, 0.12),
