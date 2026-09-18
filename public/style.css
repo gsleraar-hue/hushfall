@@ -136,7 +136,7 @@ section.row { margin-bottom: 8px; }
 .group h3 .count { font: 400 13px var(--sans); color: var(--faint); }
 .group .more { display: block; margin: 6px 12px 0; padding: 8px 0; color: var(--muted); font-size: 13px; }
 .group .more:hover { color: var(--accent); }
-.strip { display: grid; grid-template-columns: 52px minmax(0, 1fr) minmax(160px, 260px) 44px; align-items: center; gap: 16px; padding: 10px 12px; border-radius: 12px; transition: background 0.15s; }
+.strip { display: grid; grid-template-columns: 52px minmax(0, 1fr) minmax(160px, 260px) 34px 44px; align-items: center; gap: 16px; padding: 10px 12px; border-radius: 12px; transition: background 0.15s; }
 .strip:hover { background: var(--glass); }
 .strip.on { background: rgba(233, 199, 155, 0.08); }
 .strip .art { width: 52px; height: 52px; border-radius: 12px; overflow: hidden; background: var(--ink-2); }
@@ -161,6 +161,15 @@ section.row { margin-bottom: 8px; }
 .switch-label { font-size: 15px; }
 
 /* Sliders and buttons */
+/* Reverb, tone and placement per layer: folded away behind the fx button until you want them. */
+.strip-wrap { border-radius: 12px; }
+.fx-knop { width: 28px; height: 24px; border-radius: 8px; border: 1px solid var(--line); color: var(--muted); font-size: 11px; letter-spacing: 0.04em; background: transparent; transition: color 0.2s, border-color 0.2s, background 0.2s; }
+.fx-knop:hover { color: var(--text); border-color: var(--accent-line); }
+.fx-knop.aan { color: var(--accent); border-color: var(--accent-line); background: var(--accent-soft); }
+.fx-paneel { margin: 2px 0 10px 64px; padding: 10px 14px 12px; border-left: 2px solid var(--accent-line); }
+.fx-paneel .slider-row { grid-template-columns: 90px 1fr 76px; margin: 6px 0; font-size: 13px; }
+.fx-paneel .slider-row output { color: var(--muted); font-size: 12px; text-align: right; }
+.fx-paneel .btn.small { padding: 4px 10px; font-size: 12px; margin-top: 4px; }
 .slider-row { display: grid; grid-template-columns: 190px 1fr 64px; align-items: center; gap: 14px; margin: 12px 0; }
 .slider-row span { color: var(--muted); }
 .slider-row output { text-align: right; font-variant-numeric: tabular-nums; color: var(--muted); font-size: 13px; }
@@ -304,8 +313,10 @@ body.immersive-on .app { opacity: 0; pointer-events: none; transition: opacity 0
   .tagline { display: none; }
   .content { padding: 16px 16px 130px; }
   h1 { font-size: 32px; }
-  .strip { grid-template-columns: 44px minmax(0, 1fr) 44px; }
-  .strip .vol { grid-column: 1 / -1; }
+  .strip { grid-template-columns: 44px minmax(0, 1fr) 34px 44px; }
+  .fx-paneel { margin-left: 8px; padding-right: 4px; }
+  .fx-paneel .slider-row { grid-template-columns: 76px 1fr 66px; }
+  .strip .vol { grid-column: 1 / -1; order: 1; }  /* volume op een eigen regel, onder de knoppen */
   .slider-row { grid-template-columns: 1fr 44px; } .slider-row span { grid-column: 1 / -1; }
   .player { height: 70px; }
 }

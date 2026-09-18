@@ -14,12 +14,20 @@
   // ---- Settings (localStorage) -----------------------------------------------
   const defaults = { volumes: { master: 0.8, main: 1, fx: 1, noise: 0.5, radio: 0.8 }, anim: true, density: 1, licht: false, resume: true, page: 'home', noise: { color: 'roze', tone: 6000, hp: 40, gain: 0.5 }, timerFade: 30, layers: [], mixerKind: 'alle' };
   let settings = defaults;
+  // Wat je in de mixer aan een laag draait, blijft aan dat geluid hangen - ook als je het uit- en
+  // weer aanzet, en ook na afsluiten.
+  let fxPerLaag = {};
+  const STANDAARD_FX = { galm: 0, toon: 1, pan: 0 };
+  const fxVan = (id) => ({ ...STANDAARD_FX, ...(fxPerLaag[id] || {}) });
+  const heeftFx = (id) => { const f = fxVan(id); return f.galm !== 0 || f.toon !== 1 || f.pan !== 0; };
   try { settings = { ...defaults, ...JSON.parse(localStorage.getItem('hushfall') || localStorage.getItem('thrum') || localStorage.getItem('nebula') || localStorage.getItem('sfeer') || '{}') }; settings.volumes = { ...defaults.volumes, ...settings.volumes }; settings.noise = { ...defaults.noise, ...settings.noise }; } catch {}
   const save = () => {
     settings.layers = [...engine.layers.values()].map((l) => ({ id: l.sound.id, gain: l.gainValue, origin: l.origin }));
+    settings.fx = fxPerLaag;
     settings.volumes = engine.volumes; settings.noise = { color: engine.noise.color, tone: engine.noise.tone, hp: engine.noise.hp, gain: engine.noise.gain, on: engine.noise.on };
     try { localStorage.setItem('hushfall', JSON.stringify(settings)); } catch {}
   };
+  fxPerLaag = settings.fx || {};
   engine.volumes = settings.volumes;
   Object.assign(engine.noise, settings.noise, { on: false });
   visuals.setEnabled(settings.anim); visuals.setDensity(settings.density * (settings.licht ? 0.5 : 1));
@@ -415,7 +423,7 @@
       const s = pickKind(kind, used); if (!s) continue;
       used.add(s.id); firstKind = firstKind || kind;
       engine.playing = true;
-      await engine.addLayer(s, { gain, origin: 'main' });
+      await engine.addLayer(s, { gain, origin: 'main', fx: fxVan(s.id) });
     }
     if (m.noise) engine.setNoise({ on: true, color: m.noise.color, gain: m.noise.gain }); else if (engine.noise.on) engine.setNoise({ on: false });
     renderNoise();
@@ -491,10 +499,13 @@
       <div class="text"><div class="t" title="${esc(s.title)}">${esc(s.title)}</div>
       <div class="s">${s.synth ? `<span class="own-tag" title="${esc(s.license)}">Hushfall\u2019s own</span> · ${esc(s.tags?.[1] || 'endless')}` : `<a href="${esc(s.sourceUrl || '#')}" target="_blank" rel="noopener" title="${esc(s.license || '')}">${esc(s.sourceName || s.source)}</a>${s.seconds ? ' · ' + fmtTime(s.seconds) : ''}`}</div></div>
       <div class="vol"><input type="range" min="0" max="1" step="0.01" value="${gain}" aria-label="Volume"><output>${Math.round(gain * 100)}%</output></div>
-      <label class="switch small" title="Aan/uit"><input type="checkbox" ${layer ? 'checked' : ''}><span class="track"></span></label>`;
+      <button class="fx-knop${heeftFx(s.id) ? ' aan' : ''}" type="button" title="Reverb, tone and placement" aria-label="Effects for ${esc(s.title)}" aria-expanded="false">fx</button>
+      <label class="switch small" title="On/off"><input type="checkbox" ${layer ? 'checked' : ''}><span class="track"></span></label>`;
     const cb = el.querySelector('input[type=checkbox]'); const range = el.querySelector('input[type=range]'); const out = el.querySelector('output');
+    const wikkel = document.createElement('div'); wikkel.className = 'strip-wrap'; wikkel.appendChild(el);
+    wikkel.appendChild(maakFxPaneel(s, el.querySelector('.fx-knop')));
     cb.addEventListener('change', async () => {
-      if (cb.checked) { engine.playing = true; await engine.addLayer(s, { gain: Number(range.value), origin: 'fx' }); if (!engine.mainLayers().length) setScene(s.kind); }
+      if (cb.checked) { engine.playing = true; await engine.addLayer(s, { gain: Number(range.value), origin: 'fx', fx: fxVan(s.id) }); if (!engine.mainLayers().length) setScene(s.kind); }
       else engine.removeLayer(s.id);
       el.classList.toggle('on', cb.checked); updatePlayer(); save();
     });
@@ -505,7 +516,53 @@
       else if (Number(range.value) > 0) { cb.checked = true; cb.dispatchEvent(new Event('change')); }
     });
     range.addEventListener('change', save);
-    return el;
+    return wikkel;
+  }
+
+  /**
+   * The three knobs per layer. Not on the screen until you ask for them: a mixer full of sliders is
+   * a mixing desk, and this is meant to be a place where you turn one thing down.
+   */
+  function maakFxPaneel(s, knop) {
+    const paneel = document.createElement('div');
+    paneel.className = 'fx-paneel'; paneel.hidden = true;
+    const f = fxVan(s.id);
+    const toon = (v) => `${Math.round(v * 100)}%`;
+    const plek = (v) => (Math.abs(v) < 0.02 ? 'centre' : `${Math.round(Math.abs(v) * 100)}% ${v < 0 ? 'left' : 'right'}`);
+    paneel.innerHTML = `
+      <label class="slider-row"><span>Reverb</span><input type="range" data-fx="galm" min="0" max="1" step="0.01" value="${f.galm}"><output>${toon(f.galm)}</output></label>
+      <label class="slider-row"><span>Tone</span><input type="range" data-fx="toon" min="0" max="1" step="0.01" value="${f.toon}"><output>${toon(f.toon)}</output></label>
+      <label class="slider-row"><span>Placement</span><input type="range" data-fx="pan" min="-1" max="1" step="0.02" value="${f.pan}"><output>${plek(f.pan)}</output></label>
+      <button class="btn ghost small" type="button" data-fx-reset>Flat again</button>`;
+    const schuiven = [...paneel.querySelectorAll('input[data-fx]')];
+    const teken = () => {
+      const g = fxVan(s.id);
+      for (const r of schuiven) {
+        r.value = g[r.dataset.fx];
+        r.nextElementSibling.textContent = r.dataset.fx === 'pan' ? plek(g.pan) : toon(g[r.dataset.fx]);
+      }
+      knop.classList.toggle('aan', heeftFx(s.id));
+    };
+    const pas = () => {
+      const l = engine.layers.get(s.id);
+      if (l) l.setFx(fxVan(s.id));
+    };
+    for (const r of schuiven) {
+      r.addEventListener('input', () => {
+        fxPerLaag[s.id] = { ...fxVan(s.id), [r.dataset.fx]: Number(r.value) };
+        teken(); pas();
+      });
+      r.addEventListener('change', save);
+    }
+    paneel.querySelector('[data-fx-reset]').addEventListener('click', () => {
+      delete fxPerLaag[s.id]; teken(); pas(); save();
+    });
+    knop.addEventListener('click', () => {
+      paneel.hidden = !paneel.hidden;
+      knop.setAttribute('aria-expanded', String(!paneel.hidden));
+      if (!paneel.hidden) teken();
+    });
+    return paneel;
   }
   $('#mixer-search').addEventListener('input', renderMixerGroups);
 
@@ -767,7 +824,7 @@
     engine.ensure();
     const layers = settings.layers || [];
     let first = null;
-    for (const l of layers) { const s = byId.get(l.id); if (!s) continue; engine.playing = true; await engine.addLayer(s, { gain: l.gain, origin: l.origin || 'fx' }); if (!first && l.origin === 'main') first = s; }
+    for (const l of layers) { const s = byId.get(l.id); if (!s) continue; engine.playing = true; await engine.addLayer(s, { gain: l.gain, origin: l.origin || 'fx', fx: fxVan(l.id) }); if (!first && l.origin === 'main') first = s; }
     if (settings.noise?.on) engine.setNoise({ on: true });
     if (first) { setScene(first.kind); currentMood = (first.moods || [])[0]; }
     renderNoise(); updatePlayer();

@@ -77,13 +77,14 @@ function radioAdressen(url) {
 
     // ---- Lagen -------------------------------------------------------------
     /** Start (or update) a layer. origin: 'main' (from Moods) or 'fx' (from the Mixer). */
-    async addLayer(sound, { gain = 0.7, origin = 'fx' } = {}) {
+    async addLayer(sound, { gain = 0.7, origin = 'fx', fx = null } = {}) {
       this.ensure();
       let layer = this.layers.get(sound.id);
       if (layer) { layer.origin = origin; layer.setGain(gain); if (this.playing) layer.play(); this.emit('layers'); return layer; }
       layer = sound.synth ? new SynthLayer(this, sound, origin) : new Layer(this, sound, origin);
       this.layers.set(sound.id, layer);
       layer.setGain(gain);
+      if (fx) layer.setFx(fx);
       this.emit('layers');
       if (this.playing || this.layers.size === 1) { this.playing = true; await layer.play(); this.emit('state'); }
       return layer;
@@ -272,6 +273,37 @@ function radioAdressen(url) {
   }
 
   /** One looping sound (through <audio>, so long files cost little memory). */
+  /**
+   * The three knobs every layer gets, wired the same way for a file and for a sound we make
+   * ourselves: tone, placement, and how much room it is heard in.
+   *
+   * The reverb is taken from *after* the layer's own amplifier, so turning a layer down or fading it
+   * out takes its reverb with it. And it is a send to the one reverb the engine already has rather
+   * than a reverb per layer: a convolver is among the most expensive nodes there are, and six copies
+   * of the same room would cost a third of a processor core for nothing.
+   */
+  function bouwFx(ctx, gain, naarBus) {
+    const toon = ctx.createBiquadFilter(); toon.type = 'lowpass'; toon.frequency.value = 20000; toon.Q.value = 0.7;
+    const plaats = ctx.createStereoPanner();
+    gain.connect(toon).connect(plaats).connect(naarBus);
+    const send = ctx.createGain(); send.gain.value = 0;
+    plaats.connect(send);
+    const gedeeld = ctx.__hushfallGedeeld;
+    if (gedeeld && gedeeld.galm) send.connect(gedeeld.galm);
+    return { toon, plaats, send, waarden: { galm: 0, toon: 1, pan: 0 } };
+  }
+  /** toon 0..1 = dof..open; het oor hoort toonhoogte logaritmisch, dus zo loopt de schaal ook. */
+  function zetFx(fx, ctx, { galm, toon, pan }) {
+    const t = ctx.currentTime;
+    if (galm != null) { fx.waarden.galm = Math.max(0, Math.min(1, galm)); fx.send.gain.setTargetAtTime(fx.waarden.galm * 0.9, t, 0.05); }
+    if (toon != null) {
+      fx.waarden.toon = Math.max(0, Math.min(1, toon));
+      const hz = 260 * Math.pow(20000 / 260, fx.waarden.toon);
+      fx.toon.frequency.setTargetAtTime(hz, t, 0.05);
+    }
+    if (pan != null) { fx.waarden.pan = Math.max(-1, Math.min(1, pan)); fx.plaats.pan.setTargetAtTime(fx.waarden.pan, t, 0.05); }
+  }
+
   class Layer {
     constructor(engine, sound, origin) {
       this.engine = engine; this.sound = sound; this.origin = origin; this.gainValue = 0.7;
@@ -279,11 +311,13 @@ function radioAdressen(url) {
       this.el = new Audio(sound.file); this.el.loop = true; this.el.preload = 'auto'; this.el.crossOrigin = 'anonymous';
       this.src = ctx.createMediaElementSource(this.el);
       this.gain = ctx.createGain(); this.gain.gain.value = 0;
-      this.src.connect(this.gain).connect(origin === 'main' ? engine.bus.main : engine.bus.fx);
+      this.src.connect(this.gain);
+      this.fx = bouwFx(ctx, this.gain, origin === 'main' ? engine.bus.main : engine.bus.fx);
       this.ready = new Promise((res) => { this.el.addEventListener('canplay', res, { once: true }); this.el.addEventListener('error', res, { once: true }); });
       this.el.addEventListener('error', () => engine.emit('layer-error', sound));
       this.startedOnce = false;
     }
+    setFx(o) { zetFx(this.fx, this.engine.ctx, o); }
     setGain(v) {
       this.gainValue = Math.max(0, Math.min(1, v));
       if (this.el.paused) return;
@@ -310,7 +344,11 @@ function radioAdressen(url) {
       const t = this.engine.ctx.currentTime;
       this.gain.gain.setTargetAtTime(0, t, 0.15);
       const { el, src, gain } = this;
-      setTimeout(() => { el.pause(); el.removeAttribute('src'); el.load(); try { src.disconnect(); gain.disconnect(); } catch {} }, 700);
+      const fx = this.fx;
+      setTimeout(() => {
+        el.pause(); el.removeAttribute('src'); el.load();
+        try { src.disconnect(); gain.disconnect(); fx.toon.disconnect(); fx.plaats.disconnect(); fx.send.disconnect(); } catch {}
+      }, 700);
     }
   }
 
@@ -323,11 +361,12 @@ function radioAdressen(url) {
       this.engine = engine; this.sound = sound; this.origin = origin; this.gainValue = 0.7;
       const ctx = engine.ctx;
       this.gain = ctx.createGain(); this.gain.gain.value = 0;
-      this.gain.connect(origin === 'main' ? engine.bus.main : engine.bus.fx);
+      this.fx = bouwFx(ctx, this.gain, origin === 'main' ? engine.bus.main : engine.bus.fx);
       this.gen = null; this.stopTimer = null;
       this.ready = Promise.resolve();
     }
     get running() { return !!this.gen; }
+    setFx(o) { zetFx(this.fx, this.engine.ctx, o); }
     setGain(v) {
       this.gainValue = Math.max(0, Math.min(1, v));
       if (this.gen) this.gain.gain.setTargetAtTime(this.gainValue, this.engine.ctx.currentTime, 0.05);
@@ -350,8 +389,11 @@ function radioAdressen(url) {
     destroy() {
       clearTimeout(this.stopTimer);
       this.gain.gain.setTargetAtTime(0, this.engine.ctx.currentTime, 0.15);
-      const gen = this.gen, gain = this.gain; this.gen = null;
-      setTimeout(() => { gen?.stop(); try { gain.disconnect(); } catch {} }, 900);
+      const gen = this.gen, gain = this.gain, fx = this.fx; this.gen = null;
+      setTimeout(() => {
+        gen?.stop();
+        try { gain.disconnect(); fx.toon.disconnect(); fx.plaats.disconnect(); fx.send.disconnect(); } catch {}
+      }, 900);
     }
   }
 
