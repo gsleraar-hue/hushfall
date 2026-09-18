@@ -503,45 +503,67 @@
       if (bubbles > 0.2) sched.every(() => rnd(0.03, 0.22) / (0.3 + bubbles), (t) => bubbel(t, rnd(900, 2600), rnd(0.008, 0.024), rnd(-0.9, 0.9)), 1.5);
     }
 
-    // Snapping shrimp: a dry click, no pitch, and never one at a time. A reef crackles like fat in a
-    // pan - hundreds of clicks a second - and building those one by one would cost a thousand nodes
-    // a second. So two seconds of crackle are rendered once and laid over each other at shifting
-    // speeds and places; over that go the few near clicks you can actually pick out.
+    // Snapping shrimp: a dry click, no pitch, and never one at a time. Building them one by one would
+    // cost hundreds of nodes a second, so a couple of seconds of crackle are written once and laid
+    // over each other at shifting speeds and sides; over that go the few near clicks you pick out.
     if (shrimp > 0) {
       // Written into a buffer sample by sample rather than built out of nodes: five hundred clicks
       // as five hundred little node graphs costs a fifth of a second of the main thread the moment
       // the sound starts, and that is exactly the kind of pause you hear.
+      //
+      // How the clicks are made matters more than how many there are. Four hundred a second, all of
+      // the same loudness and all bright to the very top, fuse into grit - and grit is what a broken
+      // speaker sounds like, so the reef came across as overdriven while it was in fact quieter than
+      // the surf. Three things fix that. There are fewer of them, so you hear snaps instead of hiss.
+      // Most are far away and only a few are close, which is what a reef is: thousands of animals at
+      // every distance. And the top is taken off, because a few metres of water does that for you.
       const knetterBed = () => {
-        const sr = ctx.sampleRate, len = Math.floor(sr * 2);
+        const sr = ctx.sampleRate, len = Math.floor(sr * 2.5);
         const b = ctx.createBuffer(1, len, sr); const d = b.getChannelData(0);
-        for (let k = 0; k < 520; k++) {
-          const begin = Math.floor(R() * (len - sr * 0.01));
-          const duur = Math.floor(sr * rnd(0.0015, 0.005)), amp = rnd(0.15, 0.7);
+        for (let k = 0; k < Math.round(2.5 * 150); k++) {
+          const ver = Math.pow(R(), 0.45);                       // scheef naar ver weg
+          const amp = 0.08 + 0.92 * Math.pow(1 - ver, 1.6);
+          const duur = Math.floor(sr * rnd(0.0008, 0.0026));
+          const begin = Math.floor(R() * (len - duur - 8));
           let vorig = 0;
           for (let i = 0; i < duur; i++) {
             const w = R() * 2 - 1;
-            const hoog = w - 0.82 * vorig; vorig = w;   // eenvoudige hoogdoorlaat: de klik moet droog zijn
-            d[begin + i] += hoog * amp * Math.exp(-i / (duur * 0.35));
+            const hoog = w - 0.5 * vorig; vorig = w;
+            const aanzet = Math.min(1, i / 3);                   // een paar monsters aanloop, geen blokrand
+            d[begin + i] += hoog * amp * aanzet * Math.exp(-i / (duur * 0.3));
           }
         }
-        let piek = 0; for (let i = 0; i < len; i++) piek = Math.max(piek, Math.abs(d[i]));
-        if (piek) for (let i = 0; i < len; i++) d[i] *= 0.8 / piek;
+        // Water slikt de top: eerst laagdoorlaat, dan het onderste eraf zodat het droog blijft.
+        const a = Math.exp(-2 * Math.PI * 5200 / sr);
+        let lp = 0; for (let i = 0; i < len; i++) { lp = lp * a + d[i] * (1 - a); d[i] = lp; }
+        const c = Math.exp(-2 * Math.PI * 500 / sr);
+        let hp = 0, vorigIn = 0; for (let i = 0; i < len; i++) { hp = c * (hp + d[i] - vorigIn); vorigIn = d[i]; d[i] = hp; }
+        // Op gemiddelde luidheid zetten en niet op de hoogste uitslag: die ene klik vlak naast je
+        // hoort uit te steken, en als je daarop ijkt duwt hij al het andere weg.
+        let som = 0, piek = 0;
+        for (let i = 0; i < len; i++) { som += d[i] * d[i]; const q = Math.abs(d[i]); if (q > piek) piek = q; }
+        const rms = Math.sqrt(som / len);
+        const k = Math.min(0.085 / Math.max(1e-6, rms), 0.55 / Math.max(1e-6, piek));
+        for (let i = 0; i < len; i++) d[i] *= k;
         return b;
       };
       const bedden = [knetterBed(), knetterBed()];
-      sched.every(() => rnd(0.8, 1.5), (t) => {
+      let kant = 1;
+      sched.every(() => rnd(1.1, 2), (t) => {
         const src = ctx.createBufferSource(); src.buffer = bedden[Math.floor(R() * bedden.length)];
         src.playbackRate.value = rnd(0.88, 1.14);
-        const duur = rnd(1.4, 2.2);
+        const duur = rnd(1.8, 2.8);
         const g = gainNode(ctx, 0);
-        g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.5 * shrimp, t + 0.25);
-        g.gain.setValueAtTime(0.5 * shrimp, t + duur - 0.3);
+        g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.75 * shrimp, t + 0.3);
+        g.gain.setValueAtTime(0.75 * shrimp, t + duur - 0.4);
         g.gain.linearRampToValueAtTime(0, t + duur);
-        chain(src, g, panNode(ctx, rnd(-0.6, 0.6)), scherp);
-        src.start(t, R() * 0.3); src.stop(t + duur + 0.05);
+        // om en om links en rechts: twee verschillende bedden uit elkaar is een veld, niet een punt
+        kant = -kant;
+        chain(src, g, panNode(ctx, kant * rnd(0.25, 0.65)), scherp);
+        src.start(t, R() * 0.4); src.stop(t + duur + 0.05);
       }, 0.5);
       sched.every(() => rnd(0.12, 0.9) / (0.2 + shrimp), (t) => {
-        burst(ctx, scherp, { t, dur: rnd(0.002, 0.006), color: 'white', type: 'highpass', freq: rnd(1500, 4200), Q: 0.7, gain: rnd(0.04, 0.13) * shrimp, attack: 0.0004, pan: rnd(-1, 1) });
+        burst(ctx, scherp, { t, dur: rnd(0.0015, 0.004), color: 'white', type: 'bandpass', freq: rnd(1200, 3500), Q: 0.8, gain: rnd(0.03, 0.09) * shrimp, attack: 0.0004, pan: rnd(-1, 1) });
       }, 0.7);
     }
 
@@ -2511,7 +2533,7 @@
     G('zee-woelig', 'Rough sea', 'zee', 'Big waves against the rocks', waves, { size: 1 }, 0.62, 0.08),
     G('zee-onderwater', 'Under the surface', 'zee', 'Muffled water, bubbles, and the swell breathing above you', onderwater, { depth: 0.35, bubbles: 0.8, swell: 0.85 }, 2.35, 0.08),
     G('zee-diepzee', 'Deep water', 'zee', 'Dark and still, with something big groaning a long way off', onderwater, { depth: 1, bubbles: 0.35, swell: 0.15, groan: 0.7 }, 2.8, 0.1),
-    G('zee-rif', 'Coral reef', 'zee', 'The crackle of snapping shrimp from every side', onderwater, { depth: 0.4, bubbles: 0.55, swell: 0.4, shrimp: 0.8 }, 1.82, 0.06),
+    G('zee-rif', 'Coral reef', 'zee', 'The crackle of snapping shrimp from every side', onderwater, { depth: 0.4, bubbles: 0.55, swell: 0.4, shrimp: 0.8 }, 1.2, 0.06),
     G('zee-duiken', 'Diving', 'zee', 'Your own breathing through a regulator, bubbles rising past your ears', onderwater, { depth: 0.55, bubbles: 0.5, swell: 0.5, regulator: 1 }, 2.77, 0.08),
     G('water-beek', 'Mountain stream', 'water', 'Fast, bubbling water', stream, { speed: 0.7 }, 1.9, 0.12),
     G('water-riviertje', 'Lazy river', 'water', 'Slow and wide', stream, { speed: 0.3 }, 2.1, 0.12),
