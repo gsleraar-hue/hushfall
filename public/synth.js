@@ -462,15 +462,19 @@
     // The clicks keep their edge; they are close by and broadband.
     const scherp = filt(ctx, 'lowpass', 6000, 0.5); scherp.connect(out);
 
-    // The body of water itself: a low roar with the swell breathing through it.
-    const romp = loopNoise(ctx, 'brown'); const rlp = filt(ctx, 'lowpass', 220 - 90 * depth, 0.8);
-    const rg = gainNode(ctx, 0.13 + 0.05 * depth); chain(romp, rlp, rg, out); nodes.push(romp);
+    // The body of water itself: a low roar with the swell breathing through it. It is a bed and
+    // nothing more - loud enough and it stops being water and becomes a rumble that overloads
+    // everything else in the mix. The high pass takes off the bottom octave, which you cannot hear
+    // at this level anyway and which only eats the room a speaker has to work in.
+    const romp = loopNoise(ctx, 'brown'); const rhp = filt(ctx, 'highpass', 32, 0.6);
+    const rlp = filt(ctx, 'lowpass', 220 - 90 * depth, 0.8);
+    const rg = gainNode(ctx, 0.05 + 0.02 * depth); chain(romp, rhp, rlp, rg, out); nodes.push(romp);
     wander(ctx, sched, rlp.frequency, 90, 300, 9, 5);
-    const ruis = loopNoise(ctx, 'pink'); const rug = gainNode(ctx, 0.05 - 0.02 * depth);
+    const ruis = loopNoise(ctx, 'pink'); const rug = gainNode(ctx, 0.02 - 0.008 * depth);
     chain(ruis, filt(ctx, 'lowpass', 700, 0.5), rug, demp); nodes.push(ruis);
     if (swell > 0) {
       const lfo = ctx.createOscillator(); lfo.type = 'sine'; lfo.frequency.value = 1 / rnd(7, 12);
-      const diepte = gainNode(ctx, (0.06 + 0.05 * depth) * swell);
+      const diepte = gainNode(ctx, (0.022 + 0.014 * depth) * swell);
       chain(lfo, diepte); diepte.connect(rg.gain); lfo.start(); nodes.push(lfo);
     }
 
@@ -492,11 +496,11 @@
       }
     };
     if (bubbles > 0) {
-      sched.every(() => rnd(1.4, 7) / (0.3 + bubbles), (t) => {
-        sliert(t, Math.round(rnd(3, 5 + 9 * bubbles)), rnd(380, 1400), rnd(0.02, 0.055), rnd(-0.7, 0.7), rnd(0.3, 1.6));
+      sched.every(() => rnd(0.6, 3) / (0.3 + bubbles), (t) => {
+        sliert(t, Math.round(rnd(4, 8 + 14 * bubbles)), rnd(380, 1400), rnd(0.04, 0.1), rnd(-0.7, 0.7), rnd(0.3, 1.6));
       }, 1);
       // the fine fizz that never stops where water is moving
-      if (bubbles > 0.45) sched.every(() => rnd(0.05, 0.4), (t) => bubbel(t, rnd(900, 2600), rnd(0.004, 0.014), rnd(-0.9, 0.9)), 1.5);
+      if (bubbles > 0.2) sched.every(() => rnd(0.03, 0.22) / (0.3 + bubbles), (t) => bubbel(t, rnd(900, 2600), rnd(0.008, 0.024), rnd(-0.9, 0.9)), 1.5);
     }
 
     // Snapping shrimp: a dry click, no pitch, and never one at a time. A reef crackles like fat in a
@@ -2505,10 +2509,10 @@
     G('wind-chimes-bamboe', 'Bamboo chimes', 'wind', 'Hollow wooden knocking, hardly any ring at all', windChimes, { material: 'bamboo', root: 65, tubes: 6, scale: 'penta', breeze: 0.35 }, 1.7, 0.1),
     G('zee-strand', 'Waves on the shore', 'zee', 'Gentle surf', waves, { size: 0.5 }, 0.75, 0.1),
     G('zee-woelig', 'Rough sea', 'zee', 'Big waves against the rocks', waves, { size: 1 }, 0.62, 0.08),
-    G('zee-onderwater', 'Under the surface', 'zee', 'Muffled water, bubbles, and the swell breathing above you', onderwater, { depth: 0.35, bubbles: 0.55, swell: 0.85 }, 1.65, 0.08),
-    G('zee-diepzee', 'Deep water', 'zee', 'Dark and still, with something big groaning a long way off', onderwater, { depth: 1, bubbles: 0.15, swell: 0.15, groan: 0.7 }, 1.5, 0.1),
-    G('zee-rif', 'Coral reef', 'zee', 'The crackle of snapping shrimp from every side', onderwater, { depth: 0.4, bubbles: 0.35, swell: 0.4, shrimp: 0.8 }, 1.47, 0.06),
-    G('zee-duiken', 'Diving', 'zee', 'Your own breathing through a regulator, bubbles rising past your ears', onderwater, { depth: 0.55, bubbles: 0.3, swell: 0.5, regulator: 1 }, 1.44, 0.08),
+    G('zee-onderwater', 'Under the surface', 'zee', 'Muffled water, bubbles, and the swell breathing above you', onderwater, { depth: 0.35, bubbles: 0.8, swell: 0.85 }, 2.35, 0.08),
+    G('zee-diepzee', 'Deep water', 'zee', 'Dark and still, with something big groaning a long way off', onderwater, { depth: 1, bubbles: 0.35, swell: 0.15, groan: 0.7 }, 2.8, 0.1),
+    G('zee-rif', 'Coral reef', 'zee', 'The crackle of snapping shrimp from every side', onderwater, { depth: 0.4, bubbles: 0.55, swell: 0.4, shrimp: 0.8 }, 1.82, 0.06),
+    G('zee-duiken', 'Diving', 'zee', 'Your own breathing through a regulator, bubbles rising past your ears', onderwater, { depth: 0.55, bubbles: 0.5, swell: 0.5, regulator: 1 }, 2.77, 0.08),
     G('water-beek', 'Mountain stream', 'water', 'Fast, bubbling water', stream, { speed: 0.7 }, 1.9, 0.12),
     G('water-riviertje', 'Lazy river', 'water', 'Slow and wide', stream, { speed: 0.3 }, 2.1, 0.12),
     G('vuur-haard', 'Crackling fireplace', 'vuur', 'A wood fire that snaps and pops', fire, { size: 0.6 }, 1.9, 0.1),
