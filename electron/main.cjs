@@ -186,6 +186,18 @@ ipcMain.handle('library:openFolder', () => shell.openPath(libraryDir()));
  * uninstall anything yourself and updating never interrupts whatever you are listening to.
  * The downloaded library lives in the user folder and simply stays put.
  */
+// What the updater last reported, so the settings screen can show it even when you open that
+// screen long after the check ran.
+let updateStand = { staat: 'onbekend' };
+/** A small log of its own next to the settings, so a failed update can be looked into afterwards. */
+function updateLogger() {
+  const bestand = path.join(app.getPath('userData'), 'update.log');
+  const schrijf = (niveau) => (...a) => {
+    const regel = `${new Date().toISOString()} ${niveau} ${a.map((x) => (x && x.stack) || (typeof x === 'object' ? JSON.stringify(x) : String(x))).join(' ')}\n`;
+    try { fs.appendFileSync(bestand, regel); } catch { /* geen logboek is geen reden om te stoppen */ }
+  };
+  return { info: schrijf('info'), warn: schrijf('warn'), error: schrijf('error'), debug: schrijf('debug') };
+}
 function startBijwerken() {
   if (!app.isPackaged) return;                 // tijdens ontwikkelen is er niets om bij te werken
   // From the Microsoft Store: there the Store updates the app, and the install folder is read-only.
@@ -194,17 +206,32 @@ function startBijwerken() {
   if (process.windowsStore) return;
   autoUpdater.autoDownload = true;
   autoUpdater.autoInstallOnAppQuit = true;
-  const melden = (staat, extra = {}) => { if (win && !win.isDestroyed()) win.webContents.send('update:staat', { staat, ...extra }); };
+  autoUpdater.logger = updateLogger();
+  const melden = (staat, extra = {}) => {
+    updateStand = { staat, ...extra };
+    if (win && !win.isDestroyed()) win.webContents.send('update:staat', updateStand);
+  };
+  autoUpdater.on('checking-for-update', () => melden('zoeken'));
   autoUpdater.on('update-available', (i) => melden('gevonden', { versie: i?.version }));
+  autoUpdater.on('update-not-available', () => melden('niets', { versie: app.getVersion() }));
   autoUpdater.on('update-downloaded', (i) => melden('klaar', { versie: i?.version }));
   autoUpdater.on('download-progress', (p) => melden('bezig', { procent: Math.round(p?.percent || 0) }));
-  // No error message for the user: without the internet or without a release this is not a problem.
-  autoUpdater.on('error', (e) => console.warn('update failed:', e?.message || e));
+  // Nothing is thrown at the user unasked: without the internet or without a release this is not a
+  // problem. It does go in the log and into the state, so the settings screen can show what happened.
+  autoUpdater.on('error', (e) => melden('fout', { fout: String(e?.message || e).slice(0, 200) }));
   setTimeout(() => autoUpdater.checkForUpdates().catch(() => {}), 8000); // eerst rustig opstarten
   setInterval(() => autoUpdater.checkForUpdates().catch(() => {}), 6 * 60 * 60 * 1000);
 }
 // Restart and install right now, when the user clicks that in the app.
 ipcMain.handle('update:installeer', () => { autoUpdater.quitAndInstall(); });
+// Look now, because someone pressed the button. Development and the Store have nothing to look for.
+ipcMain.handle('update:kijk', async () => {
+  if (!app.isPackaged) return { staat: 'ontwikkel', versie: app.getVersion() };
+  if (process.windowsStore) return { staat: 'winkel', versie: app.getVersion() };
+  try { await autoUpdater.checkForUpdates(); } catch (e) { return { staat: 'fout', fout: String(e?.message || e).slice(0, 200) }; }
+  return updateStand;
+});
+ipcMain.handle('update:stand', () => ({ ...updateStand, versie: updateStand.versie || app.getVersion() }));
 
 // Allow autoplay without user interaction (to restore the last session).
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');

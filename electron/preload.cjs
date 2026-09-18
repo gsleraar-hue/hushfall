@@ -20,6 +20,8 @@ contextBridge.exposeInMainWorld('hushfallDesktop', {
   // Updating: the app reports for itself when a newer version is ready.
   onUpdate: listen('update:staat'),
   installUpdate: () => ipcRenderer.invoke('update:installeer'),
+  checkUpdate: () => ipcRenderer.invoke('update:kijk'),
+  updateState: () => ipcRenderer.invoke('update:stand'),
   // Sonos: let speakers on the local network listen along
   sonos: {
     list: () => ipcRenderer.invoke('sonos:list'),

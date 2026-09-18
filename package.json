@@ -1,7 +1,7 @@
 {
   "name": "hushfall",
   "productName": "Hushfall",
-  "version": "1.0.34",
+  "version": "1.0.35",
   "description": "Ambient sound and soundscapes to focus, unwind and sleep — most of it generated live by the app itself",
   "author": "Jan-Wolter",
   "repository": {
@@ -59,6 +59,7 @@
       "icon": "build/icon.ico"
     },
     "nsis": {
+      "artifactName": "Hushfall-Setup-${version}.${ext}",
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "perMachine": false,

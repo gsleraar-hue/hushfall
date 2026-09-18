@@ -577,7 +577,7 @@
     const left = Math.max(0, timer.end - Date.now());
     const m = Math.floor(left / 60000), s = Math.floor((left % 60000) / 1000);
     $('#timer-display').textContent = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-    $('#timer-status').textContent = timer.mode === 'pomodoro' ? `Pomodoro ronde ${timer.cycle}: ${timer.phase === 'werk' ? 'werken' : 'pauze'}` : `Geluid stopt${timer.fade ? ` met ${timer.fade} s uitfaden` : ''}`;
+    $('#timer-status').textContent = timer.mode === 'pomodoro' ? `Pomodoro round ${timer.cycle}: ${timer.phase === 'werk' ? 'work' : 'break'}` : `Sound stops${timer.fade ? ` with a ${timer.fade} s fade-out` : ''}`;
     if (left > 0) return;
     clearInterval(timer.iv); timer.iv = null;
     if (timer.mode === 'timer') {
@@ -710,7 +710,7 @@
     if (activeMix && mains.length) { title = activeMix.title; sub = mains.map((l) => l.sound.title).join(' + '); kind = mains[0].sound.kind; seed = seedOf(mains[0].sound.id); }
     else if (mains.length) { const s = mains[0].sound; title = s.title; sub = kindLabel(s.kind) + (all.length > 1 ? ` · ${all.length} lagen` : ''); kind = s.kind; seed = seedOf(s.id); }
     else if (engine.radio.station) { title = engine.radio.station.name; sub = engine.radio.playing ? engine.radio.station.genre : 'Connecting…'; kind = 'ruimte'; }
-    else if (all.length) { title = all.length === 1 ? all[0].sound.title : `${all.length} lagen`; sub = all.map((l) => kindLabel(l.sound.kind)).filter((v, i, a) => a.indexOf(v) === i).join(', '); kind = all[0].sound.kind; seed = seedOf(all[0].sound.id); }
+    else if (all.length) { title = all.length === 1 ? all[0].sound.title : `${all.length} layers`; sub = all.map((l) => kindLabel(l.sound.kind)).filter((v, i, a) => a.indexOf(v) === i).join(', '); kind = all[0].sound.kind; seed = seedOf(all[0].sound.id); }
     else if (engine.noise.on) { title = 'Noise'; sub = (D.noiseColors.find((c) => c.id === engine.noise.color)?.label || '') + ' noise'; kind = 'wind'; }
     if (engine.radio.station && mains.length) sub += ` · radio: ${engine.radio.station.name}`;
     if (engine.noise.on && (mains.length || all.length)) sub += ' · ruis';
@@ -720,15 +720,15 @@
     if (engine.radio.station && !radioUit) {
       radioUit = document.createElement('button');
       radioUit.id = 'btn-radio-uit'; radioUit.className = 'radio-uit'; radioUit.type = 'button';
-      radioUit.title = 'Radio uit'; radioUit.setAttribute('aria-label', 'Radio uit');
-      radioUit.textContent = 'radio uit';
+      radioUit.title = 'Radio off'; radioUit.setAttribute('aria-label', 'Radio off');
+      radioUit.textContent = 'radio off';
       radioUit.addEventListener('click', () => { engine.stopRadio(); renderRadio(); updatePlayer(); save(); });
       $('#player-info').appendChild(radioUit);
     } else if (!engine.radio.station && radioUit) radioUit.remove();
     const th = $('#player-thumb'); th.innerHTML = kind ? art(kind, seed) : '';
     player.classList.toggle('playing', engine.playing && engine.hasContent());
     $('#immersive').classList.toggle('playing', engine.playing && engine.hasContent());
-    $('#btn-play').setAttribute('aria-label', engine.playing ? 'Pauze' : 'Afspelen');
+    $('#btn-play').setAttribute('aria-label', engine.playing ? 'Pause' : 'Play');
     $('#immersive-title').textContent = title; $('#immersive-sub').textContent = sub;
     updatePlayingMarks(); syncVolumeUI();
     if ('mediaSession' in navigator) {
@@ -850,7 +850,7 @@
   }
   function updateSonosButton() {
     sonosBtn.classList.toggle('live', sonos.playing.size > 0);
-    sonosBtn.title = sonos.playing.size ? `Speelt op ${sonos.playing.size} groep(en)` : 'Naar Sonos-speakers';
+    sonosBtn.title = sonos.playing.size ? `Playing on ${sonos.playing.size} group${sonos.playing.size === 1 ? '' : 's'}` : 'Send to Sonos speakers';
   }
   function renderSonos() {
     if (sonosPop.hidden) return;
@@ -879,7 +879,7 @@
     const el = $('#sonos-status'); if (!el) return;
     if (!stream.active) { el.textContent = ''; return; }
     const info = await window.hushfallDesktop.sonos.info();
-    el.textContent = `Zendt uit op ${info.localIp}:${info.streamPort} · ${info.listeners} luisteraar${info.listeners === 1 ? '' : 's'}`;
+    el.textContent = `Broadcasting on ${info.localIp}:${info.streamPort} · ${info.listeners} listener${info.listeners === 1 ? '' : 's'}`;
   }
   async function toggleSonos(host, aan) {
     if (aan) {
@@ -911,22 +911,49 @@
   // Show the version number in Settings (comes from the built-in server, so in the browser too).
   fetch('version.json', { cache: 'no-cache' })
     .then((r) => r.json())
-    .then((v) => { if (v.version) $('#app-version').textContent = 'versie ' + v.version; })
+    .then((v) => { if (v.version) $('#app-version').textContent = 'version ' + v.version; })
     .catch(() => { $('#app-version').textContent = ''; });
 
   // Updating. The app fetches a new version in the background itself and installs it on quit;
   // the bar below is only there for anyone who does not want to wait. Never interrupt anything:
   // you are listening.
   if (window.hushfallDesktop?.onUpdate) {
-    window.hushfallDesktop.onUpdate(({ staat, versie }) => {
-      if (staat === 'gevonden') return toast(`Version ${versie} is downloading in the background`);
-      if (staat !== 'klaar') return;
-      const balk = $('#update-bar');
-      $('#update-tekst').textContent = `Version ${versie} is ready. It installs as soon as you close Hushfall.`;
-      balk.hidden = false;
+    const statusTekst = ({ staat, versie, procent, fout }) => ({
+      onbekend: 'Hushfall looks for a new version by itself and installs it when you close the app.',
+      zoeken: 'Looking for a new version\u2026',
+      niets: `You have the latest version${versie ? ' (' + versie + ')' : ''}.`,
+      gevonden: `Version ${versie} found, downloading in the background\u2026`,
+      bezig: `Downloading\u2026 ${procent || 0}%`,
+      klaar: `Version ${versie} is ready. It installs as soon as you close Hushfall.`,
+      fout: `Could not check: ${fout || 'no connection'}. It tries again by itself.`,
+      ontwikkel: 'Running from source, so there is nothing to update.',
+      winkel: 'Installed from the Microsoft Store: the Store keeps it up to date.',
+    }[staat] || '');
+    const toonStand = (st) => {
+      const tekst = statusTekst(st);
+      if (tekst) $('#update-status').textContent = tekst;
+      $('#update-restart').hidden = st.staat !== 'klaar';
+    };
+    window.hushfallDesktop.onUpdate((st) => {
+      toonStand(st);
+      if (st.staat === 'gevonden') return toast(`Version ${st.versie} is downloading in the background`);
+      if (st.staat !== 'klaar') return;
+      $('#update-tekst').textContent = `Version ${st.versie} is ready. It installs as soon as you close Hushfall.`;
+      $('#update-bar').hidden = false;
     });
     $('#update-nu').addEventListener('click', () => window.hushfallDesktop.installUpdate());
     $('#update-later').addEventListener('click', () => { $('#update-bar').hidden = true; });
+    // The same thing in Settings, because an update that only ever happens out of sight is one you
+    // cannot tell apart from an update that is not happening at all.
+    $('#update-panel').hidden = false;
+    $('#update-restart').addEventListener('click', () => window.hushfallDesktop.installUpdate());
+    $('#update-check').addEventListener('click', async () => {
+      $('#update-check').disabled = true;
+      toonStand({ staat: 'zoeken' });
+      try { toonStand(await window.hushfallDesktop.checkUpdate()); } catch { toonStand({ staat: 'fout' }); }
+      $('#update-check').disabled = false;
+    });
+    window.hushfallDesktop.updateState?.().then(toonStand).catch(() => {});
   }
 
   window.hushfall = { engine, visuals, startMix, get library() { return library; } }; // voor debuggen
