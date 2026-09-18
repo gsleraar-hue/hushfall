@@ -455,7 +455,7 @@
    * its claw hard enough to collapse a cavity. They are the loudest thing in a warm sea, and they
    * are broadband, so they come through the muffling that swallows everything else.
    */
-  function onderwater(ctx, out, { depth = 0.5, bubbles = 0.5, swell = 0.6, shrimp = 0, groan = 0, regulator = 0 }) {
+  function onderwater(ctx, out, { depth = 0.5, bubbles = 0.5, swell = 0.6, shrimp = 0, verte = 1, groan = 0, regulator = 0 }) {
     const sched = new Sched(ctx); const nodes = [];
     // Everything muffled together: deeper means darker.
     const demp = filt(ctx, 'lowpass', 900 - 500 * depth, 0.7); demp.connect(out);
@@ -503,68 +503,45 @@
       if (bubbles > 0.2) sched.every(() => rnd(0.03, 0.22) / (0.3 + bubbles), (t) => bubbel(t, rnd(900, 2600), rnd(0.008, 0.024), rnd(-0.9, 0.9)), 1.5);
     }
 
-    // Snapping shrimp: a dry click, no pitch, and never one at a time. Building them one by one would
-    // cost hundreds of nodes a second, so a couple of seconds of crackle are written once and laid
-    // over each other at shifting speeds and sides; over that go the few near clicks you pick out.
+    // Snapping shrimp. The claw shuts hard enough to tear a cavity in the water, and the sound is
+    // that cavity collapsing: a pressure pulse shorter than a thousandth of a second, with a little
+    // bubble ringing out behind it. Loud, dry, and over before you can place it.
+    //
+    // Two goes at this sounded like a broken speaker, and the reason was the same both times: a
+    // click was made of one to two milliseconds of noise. That is not a click, that is a puff of
+    // hiss - and hundreds of puffs a second, overlapping, are hiss with a wobble in it. Worse, they
+    // came from one rendered bed laid over itself, so the copies combed against each other and gave
+    // the whole thing a metallic edge. Both are gone. Each snap is now built on its own and lasts
+    // well under a millisecond, there are fifteen a second instead of four hundred, and what stands
+    // in for the thousands too far off to pick out is a plain quiet band of noise, not more clicks.
     if (shrimp > 0) {
-      // Written into a buffer sample by sample rather than built out of nodes: five hundred clicks
-      // as five hundred little node graphs costs a fifth of a second of the main thread the moment
-      // the sound starts, and that is exactly the kind of pause you hear.
-      //
-      // How the clicks are made matters more than how many there are. Four hundred a second, all of
-      // the same loudness and all bright to the very top, fuse into grit - and grit is what a broken
-      // speaker sounds like, so the reef came across as overdriven while it was in fact quieter than
-      // the surf. Three things fix that. There are fewer of them, so you hear snaps instead of hiss.
-      // Most are far away and only a few are close, which is what a reef is: thousands of animals at
-      // every distance. And the top is taken off, because a few metres of water does that for you.
-      const knetterBed = () => {
-        const sr = ctx.sampleRate, len = Math.floor(sr * 2.5);
-        const b = ctx.createBuffer(1, len, sr); const d = b.getChannelData(0);
-        for (let k = 0; k < Math.round(2.5 * 150); k++) {
-          const ver = Math.pow(R(), 0.45);                       // scheef naar ver weg
-          const amp = 0.08 + 0.92 * Math.pow(1 - ver, 1.6);
-          const duur = Math.floor(sr * rnd(0.0008, 0.0026));
-          const begin = Math.floor(R() * (len - duur - 8));
-          let vorig = 0;
-          for (let i = 0; i < duur; i++) {
-            const w = R() * 2 - 1;
-            const hoog = w - 0.5 * vorig; vorig = w;
-            const aanzet = Math.min(1, i / 3);                   // een paar monsters aanloop, geen blokrand
-            d[begin + i] += hoog * amp * aanzet * Math.exp(-i / (duur * 0.3));
-          }
-        }
-        // Water slikt de top: eerst laagdoorlaat, dan het onderste eraf zodat het droog blijft.
-        const a = Math.exp(-2 * Math.PI * 5200 / sr);
-        let lp = 0; for (let i = 0; i < len; i++) { lp = lp * a + d[i] * (1 - a); d[i] = lp; }
-        const c = Math.exp(-2 * Math.PI * 500 / sr);
-        let hp = 0, vorigIn = 0; for (let i = 0; i < len; i++) { hp = c * (hp + d[i] - vorigIn); vorigIn = d[i]; d[i] = hp; }
-        // Op gemiddelde luidheid zetten en niet op de hoogste uitslag: die ene klik vlak naast je
-        // hoort uit te steken, en als je daarop ijkt duwt hij al het andere weg.
-        let som = 0, piek = 0;
-        for (let i = 0; i < len; i++) { som += d[i] * d[i]; const q = Math.abs(d[i]); if (q > piek) piek = q; }
-        const rms = Math.sqrt(som / len);
-        const k = Math.min(0.085 / Math.max(1e-6, rms), 0.55 / Math.max(1e-6, piek));
-        for (let i = 0; i < len; i++) d[i] *= k;
-        return b;
-      };
-      const bedden = [knetterBed(), knetterBed()];
-      let kant = 1;
-      sched.every(() => rnd(1.1, 2), (t) => {
-        const src = ctx.createBufferSource(); src.buffer = bedden[Math.floor(R() * bedden.length)];
-        src.playbackRate.value = rnd(0.88, 1.14);
-        const duur = rnd(1.8, 2.8);
+      const knal = (t, ver, gain, pan) => {
+        // ver: 0 is right beside you, 1 is far off. Water takes the top off with distance, so a
+        // far snap is not just quieter, it is duller - that is what makes the field sound deep.
+        burst(ctx, scherp, {
+          t, dur: 0.0005 + 0.0011 * ver, color: 'white', type: 'bandpass',
+          freq: 5200 - 3300 * ver, Q: 1.1, gain, attack: 0.00012, pan,
+        });
+        const f = (1500 - 800 * ver) * rnd(0.85, 1.25);
+        const o = ctx.createOscillator(); o.type = 'sine';
+        o.frequency.setValueAtTime(f, t);
+        o.frequency.exponentialRampToValueAtTime(f * 0.6, t + 0.007);
         const g = gainNode(ctx, 0);
-        g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.75 * shrimp, t + 0.3);
-        g.gain.setValueAtTime(0.75 * shrimp, t + duur - 0.4);
-        g.gain.linearRampToValueAtTime(0, t + duur);
-        // om en om links en rechts: twee verschillende bedden uit elkaar is een veld, niet een punt
-        kant = -kant;
-        chain(src, g, panNode(ctx, kant * rnd(0.25, 0.65)), scherp);
-        src.start(t, R() * 0.4); src.stop(t + duur + 0.05);
-      }, 0.5);
-      sched.every(() => rnd(0.12, 0.9) / (0.2 + shrimp), (t) => {
-        burst(ctx, scherp, { t, dur: rnd(0.0015, 0.004), color: 'white', type: 'bandpass', freq: rnd(1200, 3500), Q: 0.8, gain: rnd(0.03, 0.09) * shrimp, attack: 0.0004, pan: rnd(-1, 1) });
-      }, 0.7);
+        g.gain.setValueAtTime(0, t);
+        g.gain.linearRampToValueAtTime(gain * 0.45 * (1 - 0.7 * ver), t + 0.0004);
+        g.gain.exponentialRampToValueAtTime(0.0004, t + rnd(0.004, 0.011));
+        chain(o, g, panNode(ctx, pan), scherp); o.start(t); o.stop(t + 0.02);
+      };
+      sched.every(() => rnd(0.02, 0.12) / (0.25 + shrimp), (t) => {
+        const ver = Math.pow(R(), 0.6);
+        knal(t, ver, (0.02 + 0.13 * Math.pow(1 - ver, 2)) * shrimp, rnd(-0.9, 0.9));
+      }, 0.4);
+      // The thousands you cannot pick out one by one. A quiet band of noise rather than more clicks:
+      // pile up enough clicks to stand in for a crowd and you are back to hiss.
+      const verweg = loopNoise(ctx, 'pink');
+      const vbp = filt(ctx, 'bandpass', 2200, 0.8);
+      chain(verweg, vbp, gainNode(ctx, 0.012 * shrimp * verte), scherp); nodes.push(verweg);
+      wander(ctx, sched, vbp.frequency, 1500, 3200, 7, 4);
     }
 
     // Far off, something big and slow. Ice, a hull, a whale - from here you cannot tell.
